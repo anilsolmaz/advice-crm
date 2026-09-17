@@ -20,6 +20,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          timeout: 30m
+          command_timeout: 30m
           script_stop: true
           script: |
             echo "🚀 Canlı Dağıtım Başlatıldı: $(date)"
