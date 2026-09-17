@@ -1,0 +1,44 @@
+name: Deploy Advice CRM to Oracle Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Oracle Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            echo "🚀 Canlı Dağıtım Başlatıldı: $(date)"
+            cd /home/opc/advice-crm
+
+            echo "📦 1/5: Kodlar GitHub'dan çekiliyor..."
+            git pull origin main
+
+            echo "📚 2/5: Paketler güncelleniyor..."
+            npm install --production=false
+
+            echo "🗄️ 3/5: Veritabanı şeması güncelleniyor..."
+            npx prisma db push
+
+            echo "⚡ 4/5: Next.js canlı derlemesi yapılıyor..."
+            NODE_OPTIONS="--max-old-space-size=2048" npm run build
+
+            echo "🔄 5/5: PM2 servisi kesintisiz yenileniyor..."
+            pm2 reload advice-crm || pm2 start npm --name "advice-crm" -- start
+            pm2 save
+
+            echo "✅ Canlı Dağıtım Başarıyla Tamamlandı!"
