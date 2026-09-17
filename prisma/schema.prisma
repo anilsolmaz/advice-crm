@@ -1,0 +1,547 @@
+// ============================================================
+// Advice Yurtdışı Eğitim CRM — Prisma Schema
+// Language: English (identifiers, enums, logic)
+// UI Language: Turkish (handled in Next.js layer)
+// DB: PostgreSQL via Supabase
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  ADMIN
+  ADVISOR
+  STUDENT
+}
+
+enum LeadStatus {
+  INTERESTED
+  CONSIDERING_NEXT_YEAR
+  UNINTERESTED
+  NOT_CONSIDERING
+  REGISTERED
+}
+
+enum Program {
+  WORK_AND_TRAVEL
+  ACADEMY
+  LANGUAGE_SCHOOL
+  SUMMER_CAMP
+  VISA_CONSULTING
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REVISION_REQUESTED
+}
+
+enum ApprovalEntityType {
+  STUDENT_PROFILE
+  PASSPORT_DETAILS
+  EMERGENCY_CONTACT
+  WAT_DETAIL
+  ACADEMY_DETAIL
+  LANGUAGE_DETAIL
+  SUMMER_CAMP_DETAIL
+  VISA_DETAIL
+  DOCUMENT
+  EXAM_SCORE
+}
+
+enum DocumentType {
+  PASSPORT
+  NATIONAL_ID
+  TRANSCRIPT
+  DIPLOMA
+  LANGUAGE_SCORE_REPORT
+  BANK_STATEMENT
+  PHOTO
+  VISA_APPLICATION_FORM
+  SPONSOR_LETTER
+  HEALTH_INSURANCE
+  REFERENCE_LETTER
+  OTHER
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REVISION_REQUESTED
+}
+
+enum Currency {
+  USD
+  EUR
+  TRY
+  GBP
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum LeadSource {
+  WEBSITE
+  SOCIAL_MEDIA
+  REFERRAL
+  FAIR
+  PHONE
+  WALK_IN
+  OTHER
+}
+
+enum AcademicLevel {
+  HIGH_SCHOOL
+  UNDERGRADUATE
+  MASTERS
+  PHD
+}
+
+enum VisaType {
+  TOURIST
+  STUDENT
+  WORK
+  TRANSIT
+}
+
+// ============================================================
+// CORE USER & AUTH
+// ============================================================
+
+/// Mirrors Supabase auth.users. id = auth.uid() UUID.
+model User {
+  id        String   @id @db.Uuid
+  email     String   @unique
+  fullName  String
+  phone     String?
+  avatarUrl    String?
+  passwordHash String?
+  role         Role     @default(STUDENT)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  advisorProfile    AdvisorProfile?
+  studentProfile    Student?
+  leadsAsAdvisor    Lead[]            @relation("AdvisorLeads")
+  studentsAsAdvisor Student[]         @relation("AdvisorStudents")
+  advisorNotes      AdvisorNote[]     @relation("NoteAuthor")
+  reviewedApprovals PendingApproval[] @relation("ApprovalReviewer")
+
+  @@map("users")
+}
+
+model AdvisorProfile {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String    @unique @db.Uuid
+  department          String?
+  bio                 String?
+  allowedPrograms     Program[] @default([WORK_AND_TRAVEL, ACADEMY, LANGUAGE_SCHOOL, SUMMER_CAMP, VISA_CONSULTING])
+  canManageApprovals  Boolean   @default(true)
+  canManageMarketing  Boolean   @default(true)
+  canExportData       Boolean   @default(false)
+  canViewAllLeads     Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("advisor_profiles")
+}
+
+// ============================================================
+// LEADS
+// ============================================================
+
+model Lead {
+  id          String     @id @default(uuid()) @db.Uuid
+  fullName    String
+  email       String
+  phone       String
+  source      LeadSource @default(WEBSITE)
+  status      LeadStatus @default(INTERESTED)
+  program     Program
+  notes       String?
+  advisorId   String?    @db.Uuid
+  convertedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  advisor User?    @relation("AdvisorLeads", fields: [advisorId], references: [id])
+  student Student?
+
+  @@index([status])
+  @@index([advisorId])
+  @@index([program])
+  @@index([email])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+// ============================================================
+// STUDENT CORE
+// ============================================================
+
+model Student {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  leadId    String?  @unique @db.Uuid
+  advisorId String?  @db.Uuid
+  program   Program
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead Lead? @relation(fields: [leadId], references: [id])
+  advisor User? @relation("AdvisorStudents", fields: [advisorId], references: [id])
+
+  profile          StudentProfile?
+  watDetail        WatDetail?
+  academyDetail    AcademyDetail?
+  languageDetail   LanguageDetail?
+  summerCampDetail SummerCampDetail?
+  visaDetail       VisaDetail?
+  documents        Document[]
+  payments         Payment[]
+  advisorNotes     AdvisorNote[]
+  pendingApprovals PendingApproval[]
+
+  @@index([advisorId])
+  @@index([program])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("students")
+}
+
+model StudentProfile {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @unique @db.Uuid
+  updatedAt DateTime @updatedAt
+
+  // Personal Info
+  nationalId    String
+  dateOfBirth   DateTime
+  placeOfBirth  String
+  nationality   String    @default("TR")
+  gender        String?
+  maritalStatus String?
+  motherName    String?
+  fatherName    String?
+
+  // Contact
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  district     String?
+  postalCode   String?
+  country      String  @default("TR")
+
+  // Emergency Contact
+  emergencyContactName         String?
+  emergencyContactRelationship String?
+  emergencyContactPhone        String?
+
+  // Passport Details
+  passportNumber    String?
+  passportIssueDate DateTime?
+  passportExpiry    DateTime?
+  passportCountry   String?
+
+  // Academic Background
+  highSchoolName String?
+  highSchoolGpa  Decimal?      @db.Decimal(4, 2)
+  universityName String?
+  universityGpa  Decimal?      @db.Decimal(4, 2)
+  academicLevel  AcademicLevel?
+  fieldOfStudy   String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("student_profiles")
+}
+
+// ============================================================
+// PROGRAM DETAILS
+// ============================================================
+
+model WatDetail {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @unique @db.Uuid
+  updatedAt DateTime @updatedAt
+
+  sponsorName       String?
+  sponsorDsNumber   String?
+  jobTitle          String?
+  employerName      String?
+  employerState     String?
+  jobStartDate      DateTime?
+  jobEndDate        DateTime?
+  usArrivalDate     DateTime?
+  usDepartureDate   DateTime?
+  visaInterviewDate DateTime?
+  visaApproved      Boolean   @default(false)
+  sevisId           String?
+  insurancePolicyNo String?
+  insuranceProvider String?
+  insuranceExpiry   DateTime?
+  notes             String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("wat_details")
+}
+
+model AcademyDetail {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @unique @db.Uuid
+  updatedAt DateTime @updatedAt
+
+  targetCountry    String?
+  targetUniversity String?
+  targetProgram    String?
+  academicLevel    AcademicLevel?
+  intakeYear       Int?
+  intakeSeason     String?
+
+  highSchoolGpa    Decimal? @db.Decimal(4, 2)
+  highSchoolSystem String?
+  universityGpa    Decimal? @db.Decimal(4, 2)
+
+  // IELTS
+  ieltsOverall    Decimal?  @db.Decimal(3, 1)
+  ieltsListening  Decimal?  @db.Decimal(3, 1)
+  ieltsReading    Decimal?  @db.Decimal(3, 1)
+  ieltsWriting    Decimal?  @db.Decimal(3, 1)
+  ieltsSpeaking   Decimal?  @db.Decimal(3, 1)
+  ieltsTestDate   DateTime?
+  ieltsExpiryDate DateTime?
+
+  // TOEFL iBT
+  toeflTotal      Int?
+  toeflReading    Int?
+  toeflListening  Int?
+  toeflSpeaking   Int?
+  toeflWriting    Int?
+  toeflTestDate   DateTime?
+  toeflExpiryDate DateTime?
+
+  // Other tests
+  duolingoScore Int?
+  satScore      Int?
+  greScore      Int?
+  gmatScore     Int?
+
+  applicationStatus String?
+  offerLetterUrl    String?
+  notes             String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("academy_details")
+}
+
+model LanguageDetail {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @unique @db.Uuid
+  updatedAt DateTime @updatedAt
+
+  targetCountry        String?
+  targetCity           String?
+  schoolName           String?
+  courseType           String?
+  startDate            DateTime?
+  endDate              DateTime?
+  weeksDuration        Int?
+  accommodationType    String?
+  currentLanguageLevel String?
+  notes                String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("language_details")
+}
+
+model SummerCampDetail {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @unique @db.Uuid
+  updatedAt DateTime @updatedAt
+
+  targetCountry  String?
+  campName       String?
+  campProvider   String?
+  programType    String?
+  startDate      DateTime?
+  endDate        DateTime?
+  ageGroup       String?
+  guardianName   String?
+  guardianPhone  String?
+  guardianEmail  String?
+  flightArranged Boolean  @default(false)
+  airportTransfer Boolean @default(false)
+  notes          String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("summer_camp_details")
+}
+
+model VisaDetail {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @unique @db.Uuid
+  updatedAt DateTime @updatedAt
+
+  visaType              VisaType
+  destinationCountry    String
+  targetConsulate       String?
+  applicationDate       DateTime?
+  appointmentDate       DateTime?
+  decisionDate          DateTime?
+  decisionStatus        String?
+  rejectionReason       String?
+  reapplicationPlanned  Boolean   @default(false)
+  travelInsuranceExpiry DateTime?
+  itineraryReady        Boolean   @default(false)
+  notes                 String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("visa_details")
+}
+
+// ============================================================
+// APPROVAL WORKFLOW (Draft / Staging table)
+// ============================================================
+
+model PendingApproval {
+  id              String             @id @default(uuid()) @db.Uuid
+  studentId       String             @db.Uuid
+  entityType      ApprovalEntityType
+  entityId        String?            @db.Uuid
+  oldData         Json?
+  newData         Json
+  status          ApprovalStatus     @default(PENDING)
+  rejectionReason String?
+  reviewedById    String?            @db.Uuid
+  reviewedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  reviewedBy User?   @relation("ApprovalReviewer", fields: [reviewedById], references: [id])
+
+  @@index([studentId, status])
+  @@index([status])
+  @@map("pending_approvals")
+}
+
+// ============================================================
+// DOCUMENTS
+// ============================================================
+
+model Document {
+  id                 String             @id @default(uuid()) @db.Uuid
+  studentId          String             @db.Uuid
+  type               DocumentType
+  fileName           String
+  fileUrl            String
+  fileSizeBytes      Int?
+  mimeType           String?
+  verificationStatus VerificationStatus @default(PENDING)
+  rejectionReason    String?
+  uploadedByStudent  Boolean            @default(false)
+  expiryDate         DateTime?
+  notes              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, type])
+  @@index([verificationStatus])
+  @@map("documents")
+}
+
+// ============================================================
+// PAYMENTS & INSTALLMENTS
+// ============================================================
+
+model Payment {
+  id          String        @id @default(uuid()) @db.Uuid
+  studentId   String        @db.Uuid
+  description String
+  totalAmount Decimal       @db.Decimal(12, 2)
+  currency    Currency      @default(TRY)
+  status      PaymentStatus @default(PENDING)
+  dueDate     DateTime?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  student      Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  installments Installment[]
+
+  @@index([studentId, status])
+  @@map("payments")
+}
+
+model Installment {
+  id         String   @id @default(uuid()) @db.Uuid
+  paymentId  String   @db.Uuid
+  sequence   Int
+  amount     Decimal  @db.Decimal(12, 2)
+  currency   Currency @default(TRY)
+  dueDate    DateTime
+  isPaid     Boolean  @default(false)
+  paidAt     DateTime?
+  paidAmount Decimal?  @db.Decimal(12, 2)
+  receiptUrl String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([dueDate, isPaid])
+  @@map("installments")
+}
+
+// ============================================================
+// ADVISOR NOTES (Immutable Audit Log)
+// ============================================================
+
+/// Advisor notes are APPEND-ONLY. Never update or delete.
+model AdvisorNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @db.Uuid
+  authorId  String   @db.Uuid
+  note      String
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  author  User    @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  @@index([studentId])
+  @@index([authorId])
+  @@index([studentId, createdAt])
+  @@map("advisor_notes")
+}

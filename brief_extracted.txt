@@ -1,0 +1,470 @@
+﻿ADVICE YURTDIŞI EĞİTİM - CRM YAZILIM BRİEFİ
+BÖLÜM 0: GENEL MİMARİ, ROL BAZLI ERİŞİM VE ENTEGRASYONLAR
+1. Rol Bazlı Kullanıcı ve Panel Yönetimi (Multi-Portal Mimarisi)
+CRM sistemi, kullanıcı tiplerine göre tamamen izole edilmiş iki ana panele ve yetkilendirme altyapısına sahiptir:
+A. Danışman & Yönetici Paneli (CRM Admin Panel):
+Sınırsız Kullanıcı Yönetimi: Sistem yöneticisi (Admin), dilediği kadar yeni danışman, operasyon elemanı veya yönetici hesabını sisteme tanımlayabilir.
+Erişim Yetkileri: Yöneticiler tüm dataları görürken; danışmanlar sadece kendilerine atanan veya yetkili oldukları program/öğrenci verilerini görüntüleyip yönetebilir.
+Veri Takibi: Danışmanlar; öğrencilerin vize form verilerini, ödeme durumlarını ve belgelerini onaylayabilir veya revize talebi gönderebilir.
+B. Öğrenci Portalı (Student Portal / Self-Service Panel):
+Giriş Yöntemi (E-Posta & Şifre): Öğrenciler sisteme kendilerine tanımlanan E-Posta Adresi ve Şifreleri ile güvenli şekilde giriş yaparlar.
+Kişiselleştirilmiş Veri İzolasyonu: Öğrenci sisteme giriş yaptığında sadece ve sadece kendisine ait profili, süreç aşamasını (Stepper), vize formlarını ve ödeme tablosunu görebilir. Diğer öğrencilerin verilerine kesinlikle erişemez.
+Veri Girişi & Evrak Yükleme: Öğrenci; vize form bilgilerini kendi ekranından doldurabilir, İngilizce CV (Resume), Pasaport kopyası ve vesikalık fotoğraf gibi belgeleri depoya yükleyebilir.
+Canlı Süreç İzleme: Öğrenci, dosyasının hangi aşamada olduğunu (ör. DS Bekleniyor, Vize Randevusu Alındı) profilindeki ilerleme grafiğinden anlık olarak takip eder.
+2. Otomatik Otomasyon ve Bildirim Motoru (Notification Engine)
+Süreçlerin hızlı ve şeffaf ilerlemesi için sisteme entegre bildirim altyapısı kurulur:
+Otomatik SMS / E-Posta Bilgilendirmeleri:
+Öğrencinin operasyonel aşaması güncellendiğinde (ör. "DS-2019 Belgeniz Geldi" veya "Vize Randevunuz Alındı"),
+Yeni bir ödeme taksiti yaklaştığında veya ödeme onaylandığında,
+Danışman öğrenciye eksik evrak/revize notu düştüğünde, Sistem otomatik olarak öğrencinin cep telefonuna SMS ve/veya e-posta adresine Otomatik E-Posta bilgilendirmesi gönderir.
+3. Otomatik Data Toplama ve Veri Girişi (LeadIngestion)
+Potansiyel müşteri verilerinin (Lead) tek merkezde toplanması için iki farklı veri giriş yöntemi desteklenir:
+A. Otomatik Dijital Entegrasyonlar (API Ingestion):
+Meta (Facebook & Instagram Ads): Reklam kampanyalarından gelen formlar Webhook/API entegrasyonu ile anında CRM sistemine düşer.
+Google Ads & Web Form Entegrasyonu: Web sitesindeki başvuru formları veya Google reklam formları üzerinden gelen veriler ilgili programın (WorkandTravel -Leadler) tablosuna otomatik işlenir.
+B. Manuel Data Girişi:
+Ofise doğrudan başvuran veya telefonla ulaşan adaylar için "Yeni Kayıt Ekle" butonu üzerinden manuel data girişi yapılabilir veya toplu Excel/CSV veri yüklemesi gerçekleştirilebilir.
+4. Toplu İletişim ve Pazarlama Modülü (Email Engine)
+Filtreli Toplu Mail Gönderimi:
+Seçilen kriterlere göre (ör. Sadece "Kararsız" durumundaki leadler veya Sadece "İş Bekleyen" kayıtlı öğrenciler) süzme yapılarak tek tıkla Toplu E-Posta gönderilebilir.
+Dinamik Şablon Mimarisi: E-posta metinlerinde öğrencilerin ad soyad, danışman adı gibi kişisel bilgilerini otomatik çeken dinamik parametreler (ör. {Öğrenci_Adı}, {Danışman_Adı}) kullanılır.
+BÖLÜM 1: WORK AND TRAVEL (WAT) OPERASYON MODÜLÜ
+1. Genel Mimarisi ve Modül Amacı
+Advice CRM Workand Travel (WAT) modülü; potansiyel müşteri adaylarının (lead) dijital mecralardan toplanmasından başlayarak ön görüşme, kesin kayıt, iş yerleşimi, finans yönetimi, DS-2019 belge takibi ve vize süreçlerini uçtan uca yöneten operasyonel bir CRM sistemidir.
+Modül, CRM Admin (Danışman/Yönetici) Paneli ve Öğrenci Portalı (Self-Service) olmak üzere çift taraflı (multi-portal) bir mimari ile çalışır.
+2. Kritik Sistem Kuralı: Öğrenci Veri Onay Mekanizması (ApprovalWorkflow)
+Öğrencilerin kendi portalları üzerinden yaptığı veri girişleri ve doküman güncellemeleri için güvenlik ve doğruluk protokolü uygulanır:
+Geçici Veri Havuzu (Draft/PendingState): Öğrenci profil bilgilerini değiştirdiğinde, yeni sosyal medya hesabı/arkadaş eklediğinde veya evrak yüklediğinde bu değişiklikler doğrudan canlı sisteme işlenmez.
+Danışman Onay Akışı: Öğrencinin yaptığı değişiklikler ilgili danışmanın ekranına "Onay Bekleyen Değişiklikler" bildirimi olarak düşer.
+Kesinleşme (Commit): Danışman girilen veriyi/evrakı inceleyip "Onayla" butonuna bastığında değişiklikler veritabanına işlenir ve profil resmi olarak güncellenir. Danışman "Revize İstedi" butonuna basarsa öğrenciye açıklama notu ile birlikte bildirim gider.
+3. WAT Ana Menü Sekmeleri ve Fonksiyon Spesifikasyonları
+Workand Travel ana menüsü altında 4 operasyonel sekme bulunmaktadır:
+A. 1. Leadler (Gelen Datalar) Sekmesi
+Potansiyel adayların toplandığı ve ilk temasın yönetildiği alandır.
+Veri Alanları: Geliş Tarihi (Gün/Ay/Yıl damgalı), Ad Soyad, E-Posta, Telefon Numarası, Atanan Danışman ve Aday Durumu.
+Dinamik Aday Durumları (Status):
+🔵İlgili
+🟡Seneye Düşünüyor
+⚪İlgisiz
+🔴Düşünmuyor
+🟢Kesin Kayıt (Aktar): Aday durumu "Kesin Kayıt" olarak değiştirildiğinde sistem otomasyonu devreye girer; aday Leadler tablosundan düşerek "Kayıtlı Öğrenciler" sekmesine aktarılır.
+Aday Profil Modalı (Aday İsmine Tıklanınca Açılır):
+Manuel Bilgi Alanları: Doğrum Tarihi, İngilizce Seviyesi (A2, B1, B2, C1), Daha Önce WAT Katılım Durumu (Evet/Hayır).
+Zaman Damgalı Danışman Notları (History Log): Danışmanlar not eklediğinde; notu giren danışmanın adı, işlem tarihi ve not metni kronolojik olarak listelenir. Eski notlar silinmez, üst üste birikir.
+Durum Filtresi: Aday durumlarına göre süzme imkânı sunar.
+B. 2. Kayıtlı Öğrenciler Sekmesi
+Kesin kaydı tamamlanmış öğrencilerin operasyonel takip listesidir.
+Ana Tablo Alanları: Kesin Kayıt Tarihi, Öğrenci Ad Soyad, E-Posta Adresi, Telefon Numarası, Atanan Danışman ve Profili Aç Butonu.
+3'lü Filtreleme Barı: Danışman Filtresi, İş Yerleşimi Durumu (Görüşme Yapıldı / Kabul Edildi / Reddedildi) ve Sponsor Filtresi (CIEE / AWA / UWT).
+C. 3. ABD İş Kataloğu Sekmesi
+Anlaşmalı ABD iş yerlerinin ve pozisyonlarının listelendiği alandır.
+İş Kartları: Sponsor Bilgisi, İş Yeri Adı, Saatlik Ücret ($), Lokasyon (Eyalet/Şehir), Pozisyonlar ve Kontenjan Durumu.
+Etkileşimli İş Detay Modalı: Karta tıklandığında açılır; Start Date & EndDate, Haftalık Çalışma Saati, İngilizce Şartı ve Konaklama Detayları/Ücretleri görüntülenir.
+D. 4. Toplu E-Posta Gönderim Paneli
+Segmentasyon odaklı pazarlama ve duyuru modülüdür.
+Dinamik Hedef Kitle Filtreleme:
+Leadler Seçildiğinde: Aday Durumuna göre (İlgili, Seneye Düşünüyor vb.) özel alt filtre açılır.
+Kayıtlı Öğrenciler Seçildiğinde: Süreç İlerleme Aşamasına göre (Kayıt Alındı, İş Seçimi, DS Bekleniyor vb.) özel alt filtre açılır.
+Dinamik Parametre Desteği: E-posta metninde {Öğrenci_Adı}, {Danışman_Adı} gibi değişkenler kullanılabilir.
+4. Öğrenci Detay Profil Modalı (Kapsamlı Veri Mimari Yapısı)
+Kayıtlı öğrenci satırına tıklandığında açılan 8 sekmeli kapsamlı yönetim panelidir.
+A. Header ve İlerleme Takibi (ProgressStepper)
+Vesikalık Fotoğraf Yükleme: Bilgisayardan dosya seçilerek anlık güncellenir.
+6 Adımlı Süreç Stepper'ı (Tıklanabilir):
+Kayıt Alındı➔ 2. İş Seçimi➔ 3. DS Bekleniyor➔ 4. DS Geldi➔ 5. Vize Randevusu➔ 6. Vizesini Aldı
+Eylemler:Yazdır ve CV İndir (PDF) butonları. Sistemdeki fotoğraf, kişisel bilgiler, eğitim ve iş tecrübesi verilerini çekerek otomatik formatlı WAT Resume/CV çıktısı üretir.
+B. Dikey Menü ve Sekme İçerikleri
+1. Kişisel Bilgiler:
+Kimlik, İletişim, Ev Adresi ve Posta Kodu bilgileri.
+İngilizce Seviyesi: (A2, B1, B2, C1).
+Dinamik Sosyal Medya Ekleme:+ Sosyal Medya Ekle butonu ile sınırsız platform (Instagram, X, TikTok, YouTube, Snapchat, Facebook, Diğer) ve kullanıcı adı ekleme satırları.
+Dinamik Seyahat & Grup Bilgileri:+ Arkadaş Ekle butonu ile birlikte gideceği arkadaşların ad soyad ve yakınlık bilgilerini dinamik ekleme.
+Özel Kişisel Sorular:Sigara kullanıyor musunuz? (Evet/Hayır), Yüzme biliyor musunuz? (Evet/Hayır) ve Hobileriniz (Metin alanı).
+2. Acil Kontak Kişisi:
+Ad Soyad, Yakınlık Derecesi (Anne, Baba, Diğer), Telefon, E-Posta ve Açık Adres.
+3. Çalışma & Eğitim Bilgileri:
+Üniversite Bölümü: Üniversite Adı, Bölüm, GPA / Not Ortalaması ve Giriş Tarihi (Ay/Yıl).
+Lise Bölümü: Lise Adı, Başlangıç ve Bitiş Tarihleri.
+4. İş Yerleşimi:
+Yerleşim Durumu: Görüşme Yapıldı, Kabul Edildi, Reddedildi.
+Sponsor: AWA, UWT, CIEE.
+İş Yeri Adı ve Pozisyon bilgileri.
+5. İş Tecrübesi:
++ Yeni İş Ekle altyapısı. Kurum Adı, Çalıştığı Pozisyon, Tarih Aralıkları, Ülke / Şehir / Eyalet (ABD deneyimleri için).
+6. Ödemeler & Taksitler:
+Çoklu Para Birimi: USD ($), TRY (₺), EUR (€), GBP (£).
+Özet Kartlar: Toplam Program Ücreti, Ödenen Tutar, Kalan Bakiye.
+Taksit Tablosu: Taksit Adı, Para Birimi, Tutar, Son Ödeme Tarihi ve 🟢 Ödendi / 🔴 Ödenmedi durum seçimi.
+7. Yüklü Belgeler Deposu:
+İngilizce CV (Resume.pdf), Sözleşme, Pasaport kopyası indirme ve yükleme alanı.
+8. İşlem Geçmişi (Log):
+Yapılan tüm sistem işlemlerinin (veri değişikliği, onaylar, notlar) kullanıcı adı ve zaman damgasıyla dökümü.BÖLÜM 2: AKADEMİ (YURTDIŞI ÜNİVERSİTE / LİSANS & YÜKSEK LİSANS) MODÜLÜ
+1. Genel Mimarisi ve Modül Amacı
+Advice CRM Akademi modülü; yurtdışında lisans (Bachelor's), yüksek lisans (Master's), doktora veya hazırlık (Foundation / Pre-Master) eğitimi almak isteyen aday öğrencilerin potansiyel müşteri aşamasından (lead) başlanarak akademik değerlendirme, okul başvuruları, kabul takibi, vize/portfolyo süreçleri ve kesin kayıt operasyonlarının uçtan uca yönetildiği modüldür.
+Bu modül de Danışman / CRM Operasyon Paneli ve Öğrenci Portalı (Self-Service) olmak üzere senkronize çift taraflı mimariyle çalışır.
+2. Kritik Sistem Kuralı: Öğrenci Veri Onay ve Verifikasyon Akışı (ApprovalWorkflow)
+Öğrencilerin portalları üzerinden sisteme girdikleri akademik veriler, dil skorları, niyet mektupları ve evrak güncellemeleri için güvenlik protokolü uygulanır:
+Taslak/Onay Bekleyen Durum (Draft/PendingState): Öğrenci akademik not ortalamalarını (GPA), IELTS/TOEFL skorlarını, niyet mektubu (SOP) taslaklarını veya evrak yüklemelerini yaptığında bu veriler doğrudan canlı sisteme işlenmez.
+Danışman İnceleme ve Onay Ekranı: Girilen güncellemeler ilgili eğitim danışmanının ekranına "Onay Bekleyen Akademik Veri / Evrak" bildirimi olarak düşer.
+Kesinleşme (Commit) & Revizyon: Danışman yüklenen evrakı veya girilen skoru doğrulayıp "Onayla" butonuna bastığında veriler veritabanında kesinleşir ve öğrenci profili güncellenir. Hatalı veya yetersiz evrak durumunda danışman "Revize İstedi" butonuna basarak öğrenci portalına açıklayıcı not gönderir.
+3. Akademi Ana Menü Sekmeleri ve Fonksiyon Spesifikasyonları
+Akademi modülü altında 3 operasyonel sekme yer almaktadır:
+A. 1. Leadler (Gelen Datalar) Sekmesi
+Potansiyel akademik adayların toplandığı ve akademik ön değerlendirmenin yapıldığı alandır.
+Veri Tablosu Alanları: Geliş Tarihi (Gün/Ay/Yıl), Ad Soyad, E-Mail, Telefon Numarası, Atanan Danışman ve Aday Durumu.
+Seçmeli Aday Durumları (Status):
+🔵İlgili
+🟡Düşünüyor
+⚪İlgisiz
+🟢Kesin Kayıt (Aktar): Aday durumu "Kesin Kayıt" seçildiğinde otomasyon devreye girer; aday Leadler tablosundan düşerek "Kayıtlı Öğrenciler" sekmesine aktarılır.
+Akademi Aday Profil Modalı (Aday İsmine Tıklanınca Açılır):
+Eğitim Almak İstediği Ülke: (Örn: İngiltere, Almanya, ABD, İrlanda)
+Eğitim Almak İstediği Bölüm: (Örn: Bilgisayar Mühendisliği Yüksek Lisans, İşletme Lisans)
+Lise Diploma Notu (GPA): (100'lük veya 4.0'lık sistem)
+Üniversite Diploma Notu (GPA): (Yüksek lisans adayları için AGNO)
+YKS Puanı (Varsa): (Sayısal, Eşit Ağırlık puan türü detaylı)
+İngilizce Seviyesi: (A2, B1, B2, C1)
+Varsa IELTS / TOEFL vb. Sınav Notu: (Örn: IELTS 6.5, TOEFL 85)
+Zaman Damgalı Danışman Notları (History Log): Görüşme notu eklendiğinde notu giren danışman adı ve işlem tarihi otomatik eklenir ve kronolojik olarak birikir.
+Dinamik Filtreleme: Aday durumlarına göre liste süzme imkânı.
+B. 2. Kayıtlı Öğrenciler Sekmesi
+Danışmanlık sözleşmesi imzalanmış ve başvuru süreci başlamış öğrencilerin listesidir.
+Ana Tablo Alanları: Kayıt Tarihi, Öğrenci Ad Soyad, Hedef Seviye & Ülke (Lisans / Yüksek Lisans), E-Mail / Telefon, Sorumlu Danışman ve Profili Aç Butonu.
+C. 3. Toplu E-Posta Gönderimi Sekmesi
+Akademi adaylarına ve kayıtlı öğrencilere yönelik segmentasyon odaklı duyuru modülüdür.
+Hedef Kitle Segmentasyonu:
+Leadler Seçildiğinde: Aday durumuna göre (İlgili, Düşünüyor vb.) özel filtreleme.
+Kayıtlı Öğrenciler Seçildiğinde: Başvuru ve kabul aşamasına göre (Sözleşme İmzalandı, Başvuru Aşamasında, Vize Bekliyor vb.) filtreleme.
+4. Akademi Kayıtlı Öğrenci Detay Profil Modalı (7 Ana Bölüm Yapısı)
+Kayıtlı öğrenci satırındaki "Profili Aç" butonuna veya öğrenci ismine tıklandığında açılan, 7 dikey sekmeye ayrılmış kapsamlı yönetim panelidir:
+1. Kişisel ve İletişim Bilgileri
+a) Temel Kimlik Bilgileri: Ad, Soyad, T.C. Kimlik No, Doğum Tarihi, Doğum Yeri, Cinsiyet.
+b) İletişim Detayları: Cep Telefonu, E-Posta Adresi, Ev / İkamet Adresi.
+c) Acil Durum / Veli Bilgileri: Anne/Baba Ad Soyad, Yakınlık Derecesi, Veli Telefonu, Veli E-Postası, Veli Mesleği, Finansal Destekçi Durumu (Aile Sponsoru, Kendi Bütçesi, Burs/Kredi).
+d) Sosyal Medya ve Pasaport Bilgileri: LinkedIn Profili, Pasaport Numarası, Pasaport Veriliş ve Geçerlilik Tarihleri.
+2. Eğitim Geçmişi (Academic Background)
+Lise Bilgileri: Okul Adı, Mezuniyet Yılı/Tarihi, Diploma Türü, Diploma Notu / GPA.
+Üniversite Bilgileri (Yüksek Lisans Adayları İçin): Üniversite Adı, Fakülte, Bölüm, Giriş ve Mezuniyet Tarihleri, Güncel GPA / AGNO.
+İngilizce Yeterlilik Sınav Skorları (Alt Kırılımlı):
+Sınav Türü (IELTS Academic, TOEFL iBT, Duolingo, PTE).
+Overall (Toplam) Puan, Sınav Geçerlilik Tarihi.
+Alt Kırılımlar: Reading, Writing, Listening, Speaking puanları.
+Akademik / Standart Sınavlar: SAT, ACT, GRE, GMAT skorları ve sınav tarihleri.
+3. Tercihler ve Hedefler (StudyPreferences)
+Başvuru Seviyesi: Lisans (Bachelor's) veya Yüksek Lisans (Master's).
+Hedef Başlangıç Dönemi ve Yılı: (Örn: 2027 Güz / Fall 2027).
+Hedef Ülke ve Şehirler: Tercih edilen ilk 3 ülke/bölge sıralaması.
+Hedef Bölüm ve Program Alanları: (Örn: ComputerScience MSc, Data Analytics).
+Bütçe ve Finansal Durum: Yıllık eğitim ve yaşam giderleri için ayrılan bütçe aralığı ($ / € / £).
+Burs Talebi Durumu: Kısmi burs talebi, tam burs şartı veya burs talebi yok seçimi.
+4. DS-160 / Vize ve Portfolyo Bilgileri
+Vize Geçmişi: Geçmiş vizeler, red/onay durumları, seyahat edilen ülkeler ve detayları.
+İş ve Staj Deneyimleri: Şirket adı, pozisyon, çalışma tarihleri ve iş tanımı (Özellikle Yüksek Lisans başvuruları ve vize formları için).
+Sertifika ve Projeler: Sertifika programları, akademik yayınlar, gönüllülük ve sosyal sorumluluk projeleri.
+Erkek Adaylar İçin: Askerlik tecil veya terhis durumu.
+5. Başvuru ve Okul Süreç Takibi (Application Tracking)
+Başvurulan Okullar Tablosu:
+Okul / Üniversite Adı
+Program / Bölüm Adı
+Başvuru Türü (Direct Entry, Foundation, Pre-Master)
+Başvuru Durumu (Hazırlanıyor, Gönderildi, Şartlı Kabul / ConditionalOffer, Şartsız Kabul / UnconditionalOffer, Red)
+Son Başvuru Tarihi (Deadline) ve Deposit Ödeme Son Tarihi
+Portal / Hesaba Erişim Bilgileri: Okul başvuru portalı kullanıcı adı, şifresi ve başvuru takip numarası (Application ID).
+6. Belge ve Dosya Yönetimi (DocumentChecklist)
+Gerekli başvuru evraklarının yükleme ve onay takip alanı (Menü seçenekleri: 🟢 Yüklendi & Onaylandı, 🟡 Revizede / Bekliyor, 🔴 Eksik Evrak):
+Pasaport Taraması
+Transkript (Türkçe & İngilizce)
+Diploma / Geçici Mezuniyet Belgesi
+Niyet Mektubu (Statement of Purpose - SOP)
+Referans Mektupları (Akademik & Profesyonel - 2 Adet)
+Akademik Özgeçmiş (CV / Resume)
+Dil Belgesi (IELTS / TOEFL sonuç belgesi)
+Banka Hesap Dökümü / Finansal Sponsor Belgeleri
+7. CRM Operasyonel Bilgiler
+Sorumlu Eğitim Danışmanı: Öğrenciyle ilgilenen danışman.
+Müşteri Kaynağı (Lead Source): Müşterinin firmaya ulaşma kanalı (Web Form, Google Ads, Referans, Fuar, Sosyal Media).
+Danışmanlık Statüsü: (Sözleşme İmzalandı, Başvuru Aşamasında, Vize Bekliyor, Kayıt Tamamlandı).
+Görüşme ve Not Geçmişi (History Log): Yüz yüze görüşmeler, telefon mülakatları ve alınan operasyonel notların tarih damgalı dökümü.
+BÖLÜM 3: DİL EĞİTİMİ (YURTDIŞI DİL OKULLARI) MODÜLÜ
+1. Genel Mimarisi ve Modül Amacı
+Advice CRM Dil Eğitimi modülü; Amerika, İngiltere, İrlanda, Malta, Dubai, Kanada, Avustralya gibi popüler destinasyonlarda ve diğer dünya ülkelerinde dil eğitimi almak isteyen öğrencilerin potansiyel müşteri aşamasından (lead) başlayarak bütçe planlaması, okul/konaklama seçimi, vize başvuru takibi, kabul belgeleri (LOA) ve operasyonel checklist süreçlerinin uçtan uca yönetildiği modüldür.
+Bu modül de Danışman / CRM Operasyon Paneli ve Öğrenci Portalı (Self-Service) olmak üzere senkronize çift taraflı mimariyle çalışır.
+2. Kritik Sistem Kuralı: Öğrenci Veri Onay ve Verifikasyon Akışı (ApprovalWorkflow)
+Öğrencilerin portalları üzerinden sisteme girdikleri dil seviyesi beyanları, vize geçmişi, pasaport kopyaları, banka dökümleri ve konaklama tercihlerine dair veri girişleri için güvenlik protokolü uygulanır:
+Taslak/Onay Bekleyen Durum (Draft/PendingState): Öğrenci mevcut dil seviyesini güncellediğinde, vize geçmişi/red durumlarını girdiğinde veya evrak yüklediğinde bu veriler doğrundan canlı sisteme işlenmez.
+Danışman İnceleme ve Onay Ekranı: Girilen güncellemeler ilgili eğitim danışmanının ekranına "Onay Bekleyen Dil Eğitimi Verisi / Evrak" bildirimi olarak düşer.
+Kesinleşme (Commit) & Revizyon: Danışman yüklenen evrakı veya seçilen konaklama/okul tercihlerini inceleyip "Onayla" butonuna bastığında veriler veritabanında kesinleşir ve öğrenci profili güncellenir. Yetersiz veya hatalı veri durumunda danışman "Revize İstedi" butonuna basarak öğrenci portalına açıklayıcı bildirim gönderir.
+3. Dil Eğitimi Ana Menü Sekmeleri ve Fonksiyon Spesifikasyonları
+Dil Eğitimi modülü altında 3 operasyonel sekme yer almaktadır:
+A. 1. Leadler (Gelen Datalar) Sekmesi
+Potansiyel dil okulu adaylarının toplandığı ve hızlı ön değerlendirmenin yapıldığı alandır.
+Veri Tablosu Alanları: Geliş Tarihi (Gün/Ay/Yıl), Ad Soyad, E-Mail, Telefon Numarası, Atanan Danışman ve Aday Durumu.
+Seçmeli Aday Durumları (Status):
+🔵İlgili
+🟡Düşünüyor
+⚪İlgisiz
+🔴Düşünmüyor
+🟢Kesin Kayıt (Aktar): Aday durumu "Kesin Kayıt" seçildiğinde otomasyon devreye girer; aday Leadler tablosundan düşerek "Kayıtlı Öğrenciler" sekmesine aktarılır.
+Dil Eğitimi Aday Profil Modalı (Aday İsmine Tıklanınca Açılır):
+Yaş: (Örn: 22)
+Eğitim Almak İstediği Ülke: (Örn: İngiltere, İrlanda, Malta, Dubai)
+Eğitim Almak İstediği Süre: (Örn: 12 Hafta, 24 Hafta / Akademik Sömestr)
+Eğitim Durumu: (Örn: Üniversite Öğrencisi, Mezun, Çalışan)
+Zaman Damgalı Danışman Notları (History Log): Görüşme notu eklendiğinde notu giren danışman adı ve işlem tarihi otomatik eklenir ve kronolojik olarak birikir.
+Dinamik Filtreleme: Aday durumlarına göre liste süzme imkânı.
+B. 2. Kayıtlı Öğrenciler Sekmesi
+Sözleşmesi tamamlanmış ve kayıt/vize süreçleri başlayan dil okulu öğrencilerinin listesidir.
+Ana Tablo Alanları: Kayıt Tarihi, Öğrenci Ad Soyad, Hedef Ülke & Okul (Örn: Malta - EC English), E-Mail / Telefon, Sorumlu Danışman ve Profili Aç Butonu.
+C. 3. Toplu SMS Gönderimi Sekmesi
+Dil okulu kampanyalarını, fiyat indirimlerini veya vize güncellemelerini duyurmak için SMS gönderim modülüdür.
+Hedef Kitle Segmentasyonu:
+Leadler Seçildiğinde: Aday durumuna göre (İlgili, Düşünüyor vb.) özel filtreleme.
+Kayıtlı Öğrenciler Seçildiğinde: Süreç durumuna göre (Vize Bekliyor, Kayıt Tamamlandı vb.) filtreleme.
+4. Dil Eğitimi Kayıtlı Öğrenci Detay Profil Modalı (7 Ana Bölüm Yapısı)
+Kayıtlı öğrenci satırındaki "Profili Aç" butonuna veya öğrenci ismine tıklandığında açılan, 7 dikey sekmeye ayrılmış kapsamlı yönetim panelidir:
+1. Temel Profil ve Danışmanlık Statüsü
+Sorumlu Danışman: Danışman Adı / Soyadı.
+Müşteri Kaynağı (Lead Source): Instagram, Web Form, Tavsiye, Fuar vb.
+Müşteri Statüsü: Yeni Kayıt, Görüşme Yapıldı, Teklif Gönderildi, Sözleşme İmzalandı, Vize Bekliyor, Kayıt Tamamlandı.
+Öğrenci Kimlik Bilgileri: Adı-Soyadı, T.C. Kimlik / Pasaport No, Doğum Tarihi / Cinsiyet.
+İletişim Bilgileri: Telefon, E-posta, İkamet Adresi.
+Acil Durum / Veli İrtibat: Ad-Soyad, Yakınlık Derecesi, Telefon.
+2. Dil Eğitimi Tercihleri ve Bütçe Planlaması
+Mevcut Dil Seviyesi: A1 -Beginner, A2 -Elementary, B1 -Intermediate, B2 -Upper-Intermediate, C1 - Advanced.
+Hedeflenen Dil: İngilizce, Almanca, İspanyolca, İtalyanca, Japonca, Korece.
+Hedef Ülke Tercihi:
+İngilizce: Amerika, İngiltere, İrlanda, İskoçya, Güney Afrika, Malta, Dubai, Avustralya, Kanada.
+Diğer Diller: Almanya, İspanya, İtalya, Japonya, Kore.
+Program Türü: Genel Dil, Yoğun Dil, İş İngilizcesi, Sınav Hazırlık (IELTS/TOEFL), Yaz Okulu / 18 Yaş Altı.
+Eğitim Süresi: 2-4 Hafta, 8 Hafta, 12 Hafta, 24+ Hafta (Akademik Sömestr/Yıl).
+Hedef Başlangıç Tarihi: [YYYY-AA-GG].
+Tahmini Bütçe Aralığı: Eğitim + Konaklama Toplam Bütçe ($ / € / £).
+3. Okul ve Konaklama Tercihleri
+Tercih Edilen / Başvurulan Okul: EC English, Kaplan International, Kings Education, Bayswater, LSI, CES, EmeraldCulturalInstitute, Atlas Language School, ES Dubai, Diğer...
+Kampüs / Şehir: (Örn: London Central, Dublin, New York, St. Julians).
+Ders Saati / Yoğunluk: (Örn: Haftalık 20 Ders -Standard, 28-30 Ders -Intensive).
+Konaklama Tipi: Aile Yanı (Homestay), Öğrenci Yurdu (Residence), Paylaşımlı Daire, Konaklama İstemiyor.
+Konaklama Detayları: Tek Kişilik Oda, Çift Kişilik Oda, Yeme-İçme Düzeni (Yarım Pansiyon / Sadece Kahvaltı / Yemeksiz).
+Ek Hizmet Talepleri: Havalimanı Transferi, Sağlık Sigortası, Vize Danışmanlığı.
+4. Vize ve Geçmiş Seyahat Durumu
+Pasaport Durumu: Son Geçerlilik Tarihi [YYYY-AA-GG].
+Çalışma / Eğitim Durumu: Öğrenci, Mezun, Çalışan, İş Arıyor.
+Geçmiş Vize / Seyahat Geçmişi: Schengen, İngiltere, ABD, Kanada vb.
+Daha Önce Vize Reddi Var mı?: Evet / Hayır (Evet ise Ülke ve Red Nedeni).
+Sponsor Durumu: Kendisi, Anne/Baba, Şirket, Diğer.
+5. Başvuru Takip ve Operasyon Tablosu (Application Matrix)
+Seçilen Okul / Program:
+Haftalık Ücret / Toplam Kurs Ücreti:
+Konaklama Ücreti / Kayıt Ücreti:
+Teklif / Invoice Gönderim Tarihi:
+Depozito / Ödeme Durumu: Ödenmedi, Depozito Ödendi, Tamamı Ödendi.
+Kabul Belgesi (LOA / AcceptanceLetter) Durumu: Bekleniyor, Geldi.
+Vize Başvuru Tarihi / Vize Sonucu: Onay / Red / İncelemede.
+6. Belge ve Dosya Yönetimi (Checklist)
+Gerekli başvuru ve vize evraklarının onay takip alanı (🟢 Yüklendi & Onaylandı, 🟡 Bekliyor, 🔴 Eksik Evrak):
+[ ] Pasaport Taraması
+[ ] Öğrenci Belgesi / Lise veya Üniversite Diploması
+[ ] Çalışanlar İçin: İş Yeri İzin Belgesi / Çalışma Belgesi
+[ ] Banka Hesap Dökümü (Sponsor Finansal Belgeleri)
+[ ] Okul Onay Belgesi (AcceptanceLetter / Letter of Acceptance)
+[ ] Konaklama Onay Formu
+[ ] Seyahat Sağlık Sigortası Poliçesi
+[ ] Uçak Bileti Detayları
+7. Görüşme Notları ve Zaman Tüneli
+Arama / Toplantı Notları: [Tarih - Görüşme Özeti] (Danışman adı ve zaman damgasıyla döküm).
+Hatırlatıcı / Görev Planlayıcı: (Örn: "15 Ekim: Okul fiyat teklifini takip et", "20 Ekim: Banka dökümlerini iste").
+BÖLÜM 4: YAZ OKULU (7-18 YAŞ JUNIOR & YAZ KAMPLARI) MODÜLÜ
+1. Genel Mimarisi ve Modül Amacı
+Advice CRM Yaz Okulu modülü; 7-18 yaş grubundaki çocuk ve gençlerin yaz/kış kampları, dil okulları, tematik/akademik yaz okulları ve grup organizasyonlarının uçtan uca yönetildiği operasyonel modüldür.
+Yaz okullarında Bireysel Katılımlar ile Grup Organizasyonları (Acente / Okul / Grup Lideri eşliğindeki turlar) ayrımı kritik bir yer tuttuğu için bu modülde Okul ve Kampüs Bazlı Hiyerarşik Mimari uygulanır.
+Modül, Danışman / CRM Operasyon Paneli, Öğrenci Portalı (Self-Service) ve Veli Bildirim / Onay Portalı olmak üzere 3 taraflı bir senkronize mimari ile çalışır.
+2. Kritik Sistem Kuralı: Veli Onay, Sağlık Beyanı ve Muvafakatname Workflow
+18 yaş altı (minor) öğrenciler için güvenlik, tıp ve yasal prosedürler önceliklidir. Öğrencilerin veya velilerin portal üzerinden yaptıkları tüm veri girişleri ve evrak yüklemeleri güvenlik protokolüne tabidir:
+Geçici Veri / Onay Bekleyen Durum (Draft/PendingState): Velinin doldurduğu Veli İzin ve Sağlık Onay Formu, alerji/ilaç bilgileri, Noter Muvafakatnamesi veya oda paylaşım talepleri doğrudan canlı sisteme işlenmez.
+Danışman İnceleme ve Onay Ekranı: Girilen sağlık beyanları, pasaport geçerlilik süreleri ve muvafakatname belgeleri ilgili danışmanın ekranına "Onay Bekleyen Veli/Yaz Okulu Evrakı" bildirimi olarak düşer.
+Kesinleşme (Commit) & Revizyon: Danışman yüklenen noter onaylı muvafakatnameyi veya sağlık kısıtlamalarını kontrol edip "Onayla" butonuna bastığında veriler veritabanında kesinleşir. Yetersiz belgede danışman "Revize İstedi" butonuna basarak veliye açıklayıcı SMS/E-posta bildirimi gönderir.
+3. Yaz Okulu Hiyerarşisi ve Ana Menü Yapısı
+Yaz Okulu modülü altında Okul / Kampüs Merkezli özel bir gezinme yapısı yer almaktadır:
+Yaz Okulu Modülü
+├── 1. Anlaşmalı Yaz Okulları (Okul & Kampüs Kataloğu)
+│   └── [Seçilen Okul / Kampüs] ➔ Öğrenci ve Grup Listesi
+├── 2. Leadler (Gelen Datalar)
+├── 3. Kayıtlı Öğrenciler (Tüm Liste)
+└── 4. Muhasebe & Finans Paneli (Yaz Okulu Özel)
+A. 1. Anlaşmalı Yaz Okulları Kataloğu
+Anlaşmalı kurumların (Kings Education, Bayswater, EC Young Learners, Kaplan Experience, EmeraldCulturalInstitute, Samiad, Bucksmore, Alpadia vb.) listelendiği ana merkezdir.
+Okul / Kampüs Kartları: Okul Adı, Şehir/Kampüs (Örn: LondonUxbridge, Cambridge, Dublin, New York), Yaş Grubu (Örn: 10-17 Yaş), Konaklama Seçenekleri ve Toplam Kontenjan/Öğrenci Sayısı.
+Okul Detay Sayfası: Bir okula/kampüse tıklandığında, o okula kayıtlı olan tüm Bireysel Öğrenciler ve Grup Organizasyonu Listeleri (Örn: AdviceLondonSummerCampGroup A) ayrı tablolar halinde listelenir.
+B. 2. Leadler (Gelen Datalar) Sekmesi
+Veri Tablosu Alanları: Geliş Tarihi, Öğrenci / Veli Ad Soyad, E-Mail, Telefon, Atanan Danışman, Aday Durumu (İlgili, Düşünüyor, İlgisiz, Kesin Kayıt).
+Yaz Okulu Lead Profil Modalı (Aday İsmine Tıklanınca Açılır):
+Öğrenci Yaşı / Doğum Tarihi (Program yaş sınırları kontrolü için)
+Eğitim Almak İstediği Ülke (İngiltere, Amerika, İrlanda, Malta, Fransa vb.)
+Düşünülen Eğitim Süresi (2 Hafta, 3 Hafta, 4 Hafta)
+Eğitim Durumu / Sınıfı (Örn: 8. Sınıf)
+Zaman Damgalı Danışman Notları (History Log)
+C. 3. Kayıtlı Öğrenciler Sekmesi
+Kesin kaydı yapılan tüm yaz okulu öğrencilerinin genel dökümüdür.
+D. 4. Muhasebe ve Finans Paneli (Yaz Okulu Özel)
+Yaz okullarına özel paket fiyatlandırma, ek hizmet kalemleri ve tedarikçi/okul ödemelerinin takip edildiği alandır.
+4. Yaz Okulu Kayıtlı Öğrenci Detay Profil Modalı (7 Ana Bölüm Yapısı)
+Yaz Okulu öğrencisinin profiline tıklandığında açılan, 7 dikey sekmeli kapsamlı yönetim panelidir:
+1. Öğrenci ve Veli Bilgileri
+Öğrenci Adı - Soyadı:
+Doğum Tarihi / Tam Yaş: (Program yaş sınırları için kritik parametre).
+T.C. Kimlik / Pasaport No:
+Cinsiyet:
+Okuduğu Okul ve Sınıfı: (Ör. 9. Sınıf / Anadolu Lisesi).
+Ebeveyn / Veli 1 (Birincil İrtibat): Ad-Soyad, Yakınlık Derecesi, Telefon, E-posta, Meslek.
+Ebeveyn / Veli 2 (İkincil İrtibat): Ad-Soyad, Yakınlık Derecesi, Telefon, E-posta.
+Acil Durum İrtibat Bilgileri: Ebeveyn ulaşılamazsa aranacak 3. şahıs Ad-Soyad / Telefon.
+2. Yaz Okulu Tercihleri ve Konsept
+Mevcut Dil Seviyesi: A1 -Beginner, A2 -Elementary, B1 -Intermediate, B2 -Upper-Intermediate, C1 - Advanced.
+Yaz Okulu Türü:
+Klasik Yaz Okulu (Genel İngilizce + Sosyal/Kültürel Aktiviteler)
+Akademik Yaz Okulu / Pre-A-Level / IB Hazırlık
+Tematik / Odaklı Kamp (Spor, Sanat, Kodlama/STEM, Liderlik, Tiyatro vb.)
+Yoğun Dil + Sınav Hazırlık
+Katılım Formatı:
+Bireysel Katılım
+Grup Organizasyonu ile Katılım (Grup Lideri/Acente Eşliğinde)
+Hedeflenen Ülke: İngiltere, Amerika, İrlanda, İskoçya, Malta, Kanada, Fransa, Almanya, İspanya, İtalya, Dubai vb.
+Tercih Edilen Okul / Organizasyon: Kings Education, Bayswater, EC Young Learners, Kaplan Experience, EmeraldCulturalInstitute, Samiad, Bucksmore, Alpadia vb.
+Kampüs / Şehir Tercihi: (Ör. LondonUxbridge, Cambridge, Dublin, New York, Malta St. Julians).
+Eğitim Süresi ve Tarih: [2 Hafta, 3 Hafta, 4 Hafta] / [Başlangıç Tarihi: YYYY-AA-GG].
+3. Konaklama, Yeme-İçme ve Sağlık Bilgileri (Kritik Operasyon Alanı)
+Konaklama Tipi:
+Kampüs İçi Yurt (On-CampusBoarding / Residence)
+Aile Yanı (Homestay)
+Gündüz Kampı (DayCamp - Konaklamasız, Sadece Eğitim ve Aktivite)
+Oda Tipi: Tek Kişilik En-Suite (Özel Banyo), Paylaşımlı Banyo, 2-4 Kişilik Çoklu Oda.
+Beslenme ve Diyet Gereksinimleri: Normal, Vejetaryen, Vegan, Helal (Halal), Glutensiz, Laktozsuz vb.
+Sağlık, Alerji ve İlaç Kullanımı:
+Kronik Hastalık / Düzenli Kullanılan İlaçlar: [Açıklama ve İlaç Adı]
+Alerjiler: [Gıda, Arı/Böcek, İlaç, Toz vb.]
+Özel Gereksinimler / Fiziksel Kısıtlamalar: [Açıklama]
+4. Ulaşım ve Refakat Hizmetleri (Travel & UM Service)
+Seyahat Durumu: Ailesiyle Gidecek, Acente/Grup Lideriyle Gidecek, Yalnız Seyahat Edecek.
+Refakatsiz Çocuk Hizmeti (UnaccompaniedMinor - UM): Talep Ediliyor / Edilmiyor (Havayolundan ve Okuldan Alınan Özel Karşılama/Uğurlama Servisi).
+Havalimanı Transfer Talebi: Geliş-Dönüş Çift Yön Transfer / İstemiyor.
+Uçuş Detayları: Hava Yolu, Uçuş Kodu, Varış/Kalkış Saati ve Tarihi.
+5. Yasal İzinler ve Belge Kontrol Listesi (Checklist)
+(Menü Seçenekleri: 🟢 Yüklendi & Onaylandı, 🟡 Bekliyor, 🔴 Eksik Evrak)
+[ ] Pasaport Taraması (Geziden Sonra En Az 6 Ay Geçerli)
+[ ] Muvafakatname (Noter Onaylı Yurt Dışına Çıkış İzin Belgesi - Anne/Baba Yalnızsa veya Çocuk Yalnız Gidiyorsa)
+[ ] Okul Başvuru ve Kayıt Formu
+[ ] Veli İzin ve Sağlık Onay Formu (Medical & ParentConsent Form)
+[ ] Fotoğraf / Aktivite İzin Formu (Media Consent Form)
+[ ] Okul Kabul Belgesi (AcceptanceLetter)
+[ ] Seyahat Sağlık ve Kaza Sigortası Poliçesi
+[ ] Uçak Bileti
+[ ] Vize Evrakları ve Vize Onayı
+6. Finans ve Muhasebe Takibi (Yaz Okulu Özel)
+Paket Ücreti: (Eğitim + Konaklama + Tam Pansiyon Yemek + Aktiviteler + Geziler Toplamı).
+Ekstra Ücret Kalemleri: UM Servis Ücreti, Özel Transfer Ücreti, Ekstra Opsiyonel Gezi Ücreti, Vize/Sigorta Ücreti.
+Finansal Özet:
+Toplam Program & Ekstralar Ücreti ($ / € / £ / ₺)
+Alınan Depozito Miktarı ve Ödeme Tarihi
+Kalan Bakiye ve Son Ödeme Tarihi
+Ödeme Durumu (Bekliyor, Depozito Alındı, Ödeme Tamamlandı)
+Cari / Tedarikçi (Okul) Ödeme Takibi: Okula/Medyaya yapılan depozito ve bakiye transfer dökümü.
+7. CRM Notları ve Hatırlatıcılar
+Öğrenciye Özel Operasyonel Notlar: (Ör. "Müzikle ilgileniyor, piyano odası olan kampüs tercih edilsin", "Arkadaşı Ali Yılmaz ile aynı odada kalmak istiyor").
+Görev ve Zaman Tüneli Takibi: (Ör. "10 Mayıs: Noter muvafakatnamesini veliden iste", "1 Haziran: Vize başvurusunu tamamla").
+BÖLÜM 5: VİZE BAŞVURULARI & TURİSTİK VİZE DANIŞMANLIĞI MODÜLÜ
+1. Genel Mimarisi ve Modül Amacı
+Advice CRM Vize Başvuruları modülü; münferit veya grup olarak turistik gezi, tatil, kültür turu, etkinlik veya akraba/arkadaş ziyareti amacıyla vize başvurusu yapacak müşterilerin potansiyel talep (lead) aşamasından başlayarak finansal profil analizi, konsolosluk randevu operasyonları, evrak takibi, biyometrik veri takibi ve başvuru sonuçlandırma süreçlerinin uçtan uca yönetildiği modüldür.
+Bu modül, Danışman / CRM Operasyon Paneli ve Müşteri Portalı (Self-Service Evrak & Randevu Takip) olmak üzere çift taraflı senkronize bir mimariyle çalışır.
+2. Kritik Sistem Kuralı: Finansal Beyan, Pasaport Geçerlilik ve Evrak VerificationWorkflow
+Vize başvurularında konsolosluk şartları ve kanuni geçerlilik süreleri (Schengen, İngiltere, ABD vb.) kritik önem taşıdığı için müşterilerin portal üzerinden girdikleri bilgiler ve yükledikleri belgeler sıkı bir doğrulama protokolüne tabidir:
+Geçici Veri / Onay Bekleyen Durum (Draft/PendingState): Müşterinin yüklediği banka dökümleri, iş yeri evrakları, tapu/ruhsat görselleri veya pasaport kopyaları doğrudan resmi başvuru dosyasına işlenmez.
+Danışman İnceleme ve Onay Ekranı: Girilen veriler ve yüklenen belgeler ilgili vize danışmanının ekranına "Onay Bekleyen Vize Evrakı / Finansal Beyan" bildirimi olarak düşer.
+Otomatik Geçerlilik Kontrolü (SystemValidation):
+Pasaport Kuralı: Seyahat bitiş tarihinden sonra pasaportun en az 3 ila 6 ay geçerliliğinin olup olmadığı sistem tarafından otomatik kontrol edilir.
+Banka Dökümü Kuralı: Banka dökümlerinin son 15-30 gün içinde alınıp alınmadığı ve ıslak imza/imza sirküleri kontrolü uyarısı verilir.
+Kesinleşme (Commit) & Revizyon: Vize danışmanı belgeleri kontrol edip "Onayla" butonuna bastığında evrak durumu onaylanır. Hatalı veya eksik evrakta (Örn: Banka hesabına son hafta şüpheli yüklü para girişi, imzasız bordro) danışman "Revize İstedi" butonuna basarak müşterinin portalına gerekçeli bildirim düşürür.
+3. Vize Başvuruları Ana Menü Sekmeleri ve Fonksiyon Spesifikasyonları
+Vize Başvuruları modülü altında 3 operasyonel sekme yer almaktadır:
+A. 1. Leadler (Gelen Datalar) Sekmesi
+Turistik veya ziyaret vizesi talebiyle ulaşan adayların ilk profil değerlendirmesinin yapıldığı alandır.
+Veri Tablosu Alanları: Geliş Tarihi (Gün/Ay/Yıl), Ad Soyad, E-Mail, Telefon Numarası, Atanan Vize Danışmanı ve Aday Durumu.
+Seçmeli Aday Durumları (Status):
+🔵İlgili
+🟡Düşünüyor
+⚪İlgisiz
+🔴Düşünmüyor
+🟢Kesin Kayıt (Aktar): Aday durumu "Kesin Kayıt" seçildiğinde otomasyon devreye girer; aday Leadler tablosundan düşerek "Kayıtlı Müşteriler" sekmesine aktarılır.
+Vize Aday Profil Modalı (Aday İsmine Tıklanınca Açılır):
+Yaş: (Örn: 34)
+Eğitim Durumu: (Örn: Lisans / Yüksek Lisans)
+Meslek / İş Durumu: (Örn: Özel Sektör Çalışanı, Şirket Ortağı, Devlet Memuru, Emekli)
+Daha Önceki Seyahatleri: (Örn: Schengen var, İngiltere var, ABD yok)
+Ne Zaman Seyahat Etmek İstiyor?: (Örn: Haziran 2027)
+Zaman Damgalı Danışman Notları (History Log): Görüşme notu eklendiğinde notu giren danışman adı ve işlem tarihi otomatik eklenir ve kronolojik olarak birikir.
+Dinamik Filtreleme: Aday durumlarına göre filtreleme.
+B. 2. Kayıtlı Müşteriler (Vize Başvuruları) Sekmesi
+Vize danışmanlık hizmet sözleşmesi imzalanmış ve başvuru dosyası hazırlanmaya başlanmış kişilerin listesidir.
+Ana Tablo Alanları: Kayıt Tarihi, Müşteri Ad Soyad, Hedef Ülke (Örn: Almanya Schengen, İngiltere, ABD B1/B2), E-Mail / Telefon, Vize Randevu Tarihi, Sorumlu Danışman ve Profili Aç Butonu.
+C. 3. Toplu SMS & E-Posta Gönderimi Sekmesi
+Konsolosluk randevu slotlarının açılması, vize harç zamları, yeni vize kuralları veya kampanya duyuruları için toplu bildirim modülüdür.
+Hedef Kitle Segmentasyonu:
+Leadler Seçildiğinde: Aday durumuna göre (İlgili, Düşünüyor vb.) özel filtreleme.
+Kayıtlı Müşteriler Seçildiğinde: Vize durumuna göre (Evrak Bekleniyor, Randevu Alındı, Dosya Hazırlandı, Başvuru Yapıldı, Sonuç Bekliyor) filtreleme.
+4. Vize Başvurusu Kayıtlı Müşteri Detay Profil Modalı (7 Ana Bölüm Yapısı)
+Kayıtlı müşteri satırındaki "Profili Aç" butonuna veya müşteri ismine tıklandığında açılan, 7 dikey sekmeye ayrılmış kapsamlı yönetim panelidir:
+1. Başvuru Sahibi ve İletişim Bilgileri
+Müşteri Adı - Soyadı:
+T.C. Kimlik No:
+Doğum Tarihi / Cinsiyet:
+Meslek / Unvan: Özel Sektör Çalışanı, Şirket Ortağı, Devlet Memuru, Emekli, Öğrenci, Ev Hanımı vb.
+İletişim Bilgileri: Cep Telefonu, E-posta Adresi, İkamet Adresi.
+Medeni Durum: Bekar, Evli, Boşanmış.
+Sorumlu Danışman: Danışman Adı / Soyadı.
+Müşteri Statüsü: Yeni Kayıt, Evrak Listesi Gönderildi, Evraklar Bekleniyor, Randevu Alındı, Dosya Hazırlandı, Başvuru Yapıldı, Vize Onaylandı, Vize Reddi.
+2. Vize ve Seyahat Detayları
+Hedef Ülke: Amerika (B1/B2), İngiltere, Schengen Ülkeleri (Almanya, Fransa, İtalya, İspanya, Hollanda vb.), Kanada, Avustralya, Japonya vb.
+Giriş Türü Talebi: Tek Girişli (Single), Çok Girişli (Multiple).
+Tahmini Gidiş - Dönüş Tarihleri: [YYYY-AA-GG / YYYY-AA-GG].
+Toplam Kalış Süresi: (Ör. 7 Gün, 15 Gün, 30 Gün).
+Seyahat Amacı: Turistik Gezi, Tatil, Kültür Turu, Etkinlik/Konser/Festival, Arkadaş/Akraba Ziyareti (Ziyaret ise Davetiye Durumu: Var / Yok).
+Seyahat Arkadaşları: Yalnız, Eşiyle, Ailesiyle, Arkadaş Grubuyla (Grup ise CRM İlişkili Müşteri ID'leri ve Aile Bağlantısı).
+3. Pasaport ve Seyahat Geçmişi (Travel History)
+Pasaport Numarası:
+Pasaport Türü: Umuma Mahsus (Bordo), Hususi (Yeşil), Hizmet (Gri).
+Pasaport Alınış / Son Geçerlilik Tarihi: [YYYY-AA-GG / YYYY-AA-GG] (Dönüş tarihinden sonra en az 3-6 ay geçerlilik otomatik kontrol edilir).
+Geçmiş Vize Geçmişi: Schengen, İngiltere, ABD, Kanada, Japonya vb.
+Son 5 Yılda Verilen Biyometrik Veri (PARMAK İZİ): Var (Verildiği Yıl ve Ülke: ....) / Yok.
+Daha Önce Vize Reddi Var mı?: Evet / Hayır.
+Evet ise: Hangi Ülke, Hangi Yıl ve Red Maddesi / Nedeni [Açıklama].
+4. Çalışma ve Finansal Profil (Sponsor & Gelir Durumu)
+Mevcut Çalışma Durumu: Bordrolu Çalışan, İşveren/Şirket Sahibi, Bağ-Kur/Serbest Meslek, Emekli, Çalışmıyor/Öğrenci.
+Çalışılan Şirket / Kurum Adı:
+Şirketteki Kıdem / Başlangıç Tarihi:
+Aylık Net Gelir: (TL / Döviz).
+Finansör / Sponsor Durumu: Kendisi Karşılıyor, Eşi Karşılıyor, Anne/Baba Karşılıyor, Şirket Karşılıyor.
+Banka Hesabı Bakiye Durumu: [Gösterilecek Tahmini Bakiye ve Para Birimi -Örn: 250.000 TL / 6.000 €].
+Sahiplik / Varlık Bilgileri: Tapu (Ev/Arsa), Ruhsat (Araç), Yatırım/Mevduat Hesabı vb.
+5. Randevu ve Operasyon Takip
+Başvuru Yapılacak Merkez / Konsolosluk: VFS Global, TLScontact, iDATA, BLS, ABD Konsolosluğu / AIS, Kanada VAC vb.
+Başvuru Yapılacak Şehir: İstanbul, Ankara, İzmir vb.
+Vize Randevu Tarihi ve Saati: [YYYY-AA-GG / HH:MM].
+Randevu Kayıt / Referans No:
+Otel ve Uçak Rezervasyon Durumu: Yapıldı / Bekliyor / Müşteri Kendisi Sağlayacak.
+Seyahat Sağlık Sigortası: Poliçe Düzenlendi / Bekliyor (Teminat Miktarı: Ör. 30.000 € / 50.000 USD).
+Başvuru Ücreti ve Ödeme Durumu: Vize Harcı + Hizmet Bedeli - Ödendi / Bekliyor.
+6. Evrak Kontrol Listesi (DocumentChecklist)
+(Menü Seçenekleri: 🟢 Yüklendi & Onaylandı, 🟡 Bekliyor, 🔴 Eksik / Hatalı Evrak)
+[ ] Pasaport Taraması ve Varsa Eski Pasaportlar
+[ ] Biyometrik Fotoğraf (Hedef ülke standartlarına uygun ölçü ve fonda)
+[ ] Nüfus Kayıt Örneği (Tam Tekmil Vukuatlı) & İkametgah Belgesi
+[ ] Çalışanlar İçin: İş Yeri İzin Belgesi, İşe Giriş Bildirgesi, Son 3 Aylık Maaş Bordrosu (Kaşeli/İmzalı), SGK Tescil ve Hizmet Dökümü
+[ ] İşverenler İçin: Vergi Levhası, Ticaret Sicil Gazetesi, İmza Sirküleri, Güncel Faaliyet Belgesi
+[ ] Emekliler İçin: Emekli Tescil Belgesi, Emekli Maaş Banka Hesap Dökümü
+[ ] Son 3 Aylık Kaşeli/İmzalı Banka Hesap Dökümü ve İmza Sirküleri
+[ ] Şahsi Dilekçe / Niyet Mektubu (CoverLetter)
+[ ] Uçak ve Otel Rezervasyon Onayları
+[ ] Seyahat Sağlık Sigortası Poliçesi
+[ ] Varsa Tapu, Ruhsat ve Ek Gelir Fotokopileri
+7. Görüşme ve Takip Notları
+Vize Danışmanı Özel Notları: (Ör. "Müşterinin 2 yıl önce İtalya reddi var, niyet mektubunda ret sebebi detaylı açıklanacak", "Banka hesabına son hafta yüklü miktarda şüpheli para girişi yapılmaması hususunda müşteri uyarıldı").
+Hatırlatıcı & Takip Görevi: (Ör. "12 Ekim: Banka dökümünün ıslak imzalı/kaşeli halini müşteriden iste", "18 Ekim: Pasaport teslim takibini yap ve kargo kodunu gir")
