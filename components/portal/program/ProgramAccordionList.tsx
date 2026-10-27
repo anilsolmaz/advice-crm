@@ -22,6 +22,7 @@ import { ProgramStepperWizard, type ProgramStepItem } from "@/components/portal/
 import { InteractiveDocumentGrid } from "@/components/portal/documents/InteractiveDocumentGrid";
 import { Ds160FormSection } from "@/components/portal/dashboard/Ds160FormSection";
 import type { RequiredDocConfig } from "@/lib/portal/programConfig";
+import { formatAcademicAppStatus } from "@/types/crm";
 
 export interface SerializedEnrollmentItem {
   id: string;
@@ -307,9 +308,13 @@ export function ProgramAccordionList({ enrollments }: Props) {
                           <div className="rounded-xl bg-slate-50 p-3">
                             <p className="text-slate-400">DS-160 Form Durumu</p>
                             <p className="font-bold text-slate-900 mt-0.5">
-                              {enrollment.watDetail?.ds160Status === "COMPLETED"
+                              {enrollment.watDetail?.ds160Status === "COMPLETED" ||
+                              enrollment.watDetail?.ds160Status === "SUBMITTED" ||
+                              enrollment.watDetail?.ds160Status === "APPROVED"
                                 ? "Danışmana İletildi"
-                                : "Öğrenci Girişi Bekleniyor"}
+                                : enrollment.watDetail?.ds160Status === "DRAFT"
+                                ? "Taslak"
+                                : "Giriş Bekleniyor"}
                             </p>
                           </div>
                           <div className="rounded-xl bg-slate-50 p-3">
@@ -341,14 +346,9 @@ export function ProgramAccordionList({ enrollments }: Props) {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <History className="h-5 w-5 text-blue-600" />
-                          <div>
-                            <h3 className="text-sm font-bold text-slate-900">
-                              İş Tekliflerim & Teklif Geçmişi (Job Offer History)
-                            </h3>
-                            <p className="text-xs text-slate-500">
-                              Danışmanınızın size atadığı aktif iş tekliflerini ve daha önce kabul/reddettiğiniz tüm tekliflerin kayıtlarını buradan inceleyebilirsiniz.
-                            </p>
-                          </div>
+                          <h3 className="text-sm font-bold text-slate-900">
+                            İş Tekliflerim &amp; Teklif Geçmişi
+                          </h3>
                         </div>
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                           Toplam {enrollment.watJobAssignments.length} Teklif Kaydı
@@ -492,9 +492,16 @@ export function ProgramAccordionList({ enrollments }: Props) {
                                 {app.courseName} · {app.degree} · Dönem: {app.intake}
                               </p>
                             </div>
-                            <span className="rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 font-bold text-indigo-700">
-                              {app.status}
-                            </span>
+                            {(() => {
+                              const st = formatAcademicAppStatus(app.status);
+                              return (
+                                <span
+                                  className={`rounded-full border px-3 py-1 font-bold ${st.badgeClass}`}
+                                >
+                                  {st.label}
+                                </span>
+                              );
+                            })()}
                           </div>
                         ))}
                       </div>

@@ -33,7 +33,11 @@ import {
   Trash2,
 } from "lucide-react";
 import type { Program } from "@prisma/client";
-import { DOCUMENT_TYPE_LABELS, PROGRAM_LABELS } from "@/types/crm";
+import {
+  DOCUMENT_TYPE_LABELS,
+  PROGRAM_LABELS,
+  formatDs160Status,
+} from "@/types/crm";
 import { ProgramBadge } from "@/components/crm/common/ProgramBadge";
 import { EmailComposeModal } from "@/components/crm/common/EmailComposeModal";
 import { GenderAvatar } from "@/components/crm/common/GenderAvatar";
@@ -1015,20 +1019,20 @@ export function StudentDetailView({
                 </div>
               </div>
 
-              {/* Deadlines & DS-160 Status */}
+              {/* Son Teslim Tarihleri & DS-160 Durumu */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div className="rounded-xl border border-red-200 bg-red-50/40 p-4">
                   <span className="text-[10px] font-bold uppercase text-red-700 block">
-                    Pasaport &amp; Vize Son Teslim Tarihi (Deadline)
+                    Pasaport &amp; Vize Son Teslim Tarihleri
                   </span>
                   <p className="mt-1 font-bold text-slate-900">
-                    Pasaport Deadline:{" "}
+                    Pasaport Son Teslim:{" "}
                     {watDetail?.passportDeadline
                       ? formatDate(watDetail.passportDeadline)
                       : "15 Mart 2026"}
                   </p>
                   <p className="font-bold text-red-700 mt-0.5">
-                    Vize Deadline:{" "}
+                    Vize Son Teslim:{" "}
                     {watDetail?.visaDeadline
                       ? formatDate(watDetail.visaDeadline)
                       : "20 Nisan 2026"}
@@ -1037,16 +1041,25 @@ export function StudentDetailView({
 
                 <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
                   <span className="text-[10px] font-bold uppercase text-blue-800 block">
-                    DS-160 Formu Durumu
+                    DS-160 Form Durumu
                   </span>
-                  <p className="mt-1 font-black text-blue-950 text-sm">
-                    {watDetail?.ds160Status === "COMPLETED"
-                      ? "✓ Öğrenci Doldurdu (Tamamlandı)"
-                      : watDetail?.ds160Status || "Öğrenciden Bekleniyor"}
-                  </p>
-                  <p className="text-slate-600 mt-0.5 font-mono">
-                    Confirmation No:{" "}
-                    {watDetail?.ds160ConfirmationNo || "Henüz girilmedi"}
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    {(() => {
+                      const dsStatus = formatDs160Status(watDetail?.ds160Status);
+                      return (
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-lg border px-2.5 py-0.5 text-xs font-bold",
+                            dsStatus.badgeClass,
+                          )}
+                        >
+                          {dsStatus.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <p className="text-slate-600 mt-1 font-mono text-[11px]">
+                    Onay No: {watDetail?.ds160ConfirmationNo || "Henüz girilmedi"}
                   </p>
                 </div>
 
@@ -1219,7 +1232,7 @@ export function StudentDetailView({
 
                   <div>
                     <label className="mb-1 block font-semibold text-slate-600">
-                      Pasaport Deadline
+                      Pasaport Son Teslim
                     </label>
                     <input
                       type="date"
@@ -1236,7 +1249,7 @@ export function StudentDetailView({
 
                   <div>
                     <label className="mb-1 block font-semibold text-slate-600">
-                      Vize Deadline
+                      Vize Son Teslim
                     </label>
                     <input
                       type="date"
@@ -1353,7 +1366,7 @@ export function StudentDetailView({
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                     <Link2 className="h-4 w-4 text-[#1e3a8a]" />
-                    Öğrenci İş Teklifi Geçmişi (Job Offer History — {jobAssignments.length} Kayıt)
+                    Öğrenci İş Teklifi Geçmişi ({jobAssignments.length} Kayıt)
                   </h4>
                   <span className="text-[11px] text-slate-500">
                     Reddedilen, onaylanan ve bekleyen tüm teklif kayıtları
@@ -1391,10 +1404,10 @@ export function StudentDetailView({
                               )}
                             >
                               {asg.status === "ACCEPTED"
-                                ? "✓ ÖĞRENCİ ONAYLADI"
+                                ? "✓ Öğrenci Onayladı"
                                 : asg.status === "DECLINED"
-                                  ? "✕ ÖĞRENCİ REDDETTİ"
-                                  : "⏳ YANIT BEKLENİYOR"}
+                                  ? "✕ Öğrenci Reddetti"
+                                  : "⏳ Yanıt Bekleniyor"}
                             </span>
                             <span className="font-bold text-slate-900">
                               [{asg.job?.sponsor}] {asg.job?.jobTitle} ({asg.job?.location})
@@ -1724,7 +1737,7 @@ export function StudentDetailView({
                   <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                        Application Deadline
+                        Son Başvuru Tarihi
                       </span>
                       <span
                         className={cn(
@@ -1735,12 +1748,12 @@ export function StudentDetailView({
                         {app.applicationDeadline
                           ? formatDate(app.applicationDeadline)
                           : "—"}
-                        {isDeadlineOverdue && " (OVERDUE!)"}
+                        {isDeadlineOverdue && " (Gecikti)"}
                       </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                        Visa Deadline
+                        Vize Son Tarihi
                       </span>
                       <span className="font-bold text-slate-800">
                         {app.visaDeadline ? formatDate(app.visaDeadline) : "—"}
@@ -1759,16 +1772,12 @@ export function StudentDetailView({
                       }
                       className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-[#0f172a]"
                     >
-                      <option value="PREPARING">Hazırlanıyor (Preparing)</option>
-                      <option value="APPLIED">Başvuruldu (Applied)</option>
-                      <option value="CONDITIONAL_OFFER">
-                        Şartlı Kabul (Conditional Offer)
-                      </option>
-                      <option value="UNCONDITIONAL_OFFER">
-                        Kesin Kabul (Unconditional Offer)
-                      </option>
-                      <option value="REJECTED">Reddedildi (Rejected)</option>
-                      <option value="ENROLLED">Kayıt Tamamlandı (Enrolled)</option>
+                      <option value="PREPARING">Hazırlanıyor</option>
+                      <option value="APPLIED">Başvuruldu</option>
+                      <option value="CONDITIONAL_OFFER">Şartlı Kabul</option>
+                      <option value="UNCONDITIONAL_OFFER">Kesin Kabul</option>
+                      <option value="REJECTED">Reddedildi</option>
+                      <option value="ENROLLED">Kayıt Tamamlandı</option>
                     </select>
                   </div>
                 </div>
@@ -1782,7 +1791,7 @@ export function StudentDetailView({
             className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4 text-xs"
           >
             <h3 className="text-sm font-bold text-[#0f172a]">
-              Yeni Üniversite / Okul Başvurusu (Application) Ekle
+              Yeni Üniversite / Okul Başvurusu Ekle
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div>
@@ -1802,7 +1811,7 @@ export function StudentDetailView({
               </div>
               <div>
                 <label className="mb-1 block font-bold text-slate-700">
-                  Bölüm / Program Adı (Course Name) *
+                  Bölüm / Program Adı *
                 </label>
                 <input
                   type="text"
@@ -1817,7 +1826,7 @@ export function StudentDetailView({
               </div>
               <div>
                 <label className="mb-1 block font-bold text-slate-700">
-                  Ülke (Country)
+                  Ülke
                 </label>
                 <input
                   type="text"
@@ -1830,7 +1839,7 @@ export function StudentDetailView({
               </div>
               <div>
                 <label className="mb-1 block font-bold text-slate-700">
-                  Derece (Degree)
+                  Derece / Seviye
                 </label>
                 <input
                   type="text"
@@ -1844,7 +1853,7 @@ export function StudentDetailView({
               </div>
               <div>
                 <label className="mb-1 block font-bold text-slate-700">
-                  Intake (Dönem)
+                  Başvuru Dönemi
                 </label>
                 <input
                   type="text"
@@ -1852,13 +1861,13 @@ export function StudentDetailView({
                   onChange={(e) =>
                     setNewApp({ ...newApp, intake: e.target.value })
                   }
-                  placeholder="Fall 2026 / Spring 2027"
+                  placeholder="Güz 2026 / Bahar 2027"
                   className="w-full rounded-xl border border-slate-200 px-3 py-2"
                 />
               </div>
               <div>
                 <label className="mb-1 block font-bold text-slate-700">
-                  Öncelik Sırası (Priority)
+                  Öncelik Sırası
                 </label>
                 <select
                   value={newApp.priority}
@@ -1867,14 +1876,14 @@ export function StudentDetailView({
                   }
                   className="w-full rounded-xl border border-slate-200 px-3 py-2"
                 >
-                  <option value={1}>Priority 1 (1. Tercih)</option>
-                  <option value={2}>Priority 2 (2. Tercih)</option>
-                  <option value={3}>Priority 3 (3. Tercih)</option>
+                  <option value={1}>1. Tercih</option>
+                  <option value={2}>2. Tercih</option>
+                  <option value={3}>3. Tercih</option>
                 </select>
               </div>
               <div>
                 <label className="mb-1 block font-bold text-slate-700">
-                  Application Deadline
+                  Son Başvuru Tarihi
                 </label>
                 <input
                   type="date"
@@ -1890,7 +1899,7 @@ export function StudentDetailView({
               </div>
               <div>
                 <label className="mb-1 block font-bold text-slate-700">
-                  Visa Deadline
+                  Vize Son Tarihi
                 </label>
                 <input
                   type="date"

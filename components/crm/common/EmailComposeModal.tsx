@@ -31,10 +31,10 @@ const EMAIL_TEMPLATES = [
   },
   {
     id: "sponsor_job_offer",
-    label: "Sponsor & İş Teklifi (Job Offer) Onayı",
-    subject: "Work & Travel İş Teklifiniz (Job Offer) Hazır — Advice Yurtdışı Eğitim",
+    label: "Sponsor & İş Teklifi Onayı",
+    subject: "Work & Travel İş Teklifiniz Hazır — Advice Yurtdışı Eğitim",
     getBody: (name: string) =>
-      `Merhaba ${name},\n\nSizin için uygun görülen Work & Travel iş teklifi (Job Offer) öğrenci portalınıza tanımlanmıştır. Lütfen portalınıza giriş yaparak iş detaylarını, saatlik ücreti ve konaklama şartlarını inceleyip onayınızı iletiniz.\n\nSevgiler,\nAdvice Yurtdışı Eğitim WAT Departmanı`,
+      `Merhaba ${name},\n\nSizin için uygun görülen Work & Travel iş teklifi öğrenci portalınıza tanımlanmıştır. Lütfen portalınıza giriş yaparak iş detaylarını, saatlik ücreti ve konaklama şartlarını inceleyip onayınızı iletiniz.\n\nSevgiler,\nAdvice Yurtdışı Eğitim WAT Departmanı`,
   },
   {
     id: "payment_reminder",

@@ -470,7 +470,7 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   CRIMINAL_RECORD: "Adli Sicil Kaydı",
   CONTRACT: "Sözleşme",
   SEVIS_RECEIPT: "SEVIS Makbuzu",
-  JOB_OFFER: "Job Offer (İş Teklifi)",
+  JOB_OFFER: "İş Teklifi",
   STUDENT_CERTIFICATE: "Öğrenci Belgesi",
   DS_160_CONFIRMATION: "DS-160 Onay Sayfası",
   PAYMENT_RECEIPT: "Ödeme Dekontu",
@@ -498,3 +498,94 @@ export const ACADEMIC_LEVEL_LABELS: Record<AcademicLevel, string> = {
   MASTERS: "Yüksek Lisans",
   PHD: "Doktora",
 } as const;
+
+export const DS160_STATUS_LABELS: Record<string, string> = {
+  NOT_STARTED: "Başlanmadı",
+  DRAFT: "Taslak (Dolduruluyor)",
+  SUBMITTED: "Danışmana İletildi",
+  IN_REVIEW: "İnceleniyor",
+  APPROVED: "Onaylandı",
+  COMPLETED: "Tamamlandı",
+};
+
+export function formatDs160Status(status?: string | null): {
+  label: string;
+  badgeClass: string;
+} {
+  const s = (status || "").toUpperCase();
+  if (s === "COMPLETED" || s === "APPROVED") {
+    return {
+      label: "Tamamlandı",
+      badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-200",
+    };
+  }
+  if (s === "SUBMITTED") {
+    return {
+      label: "Danışmana İletildi",
+      badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
+    };
+  }
+  if (s === "IN_REVIEW") {
+    return {
+      label: "İnceleniyor",
+      badgeClass: "bg-amber-100 text-amber-800 border-amber-200",
+    };
+  }
+  if (s === "DRAFT") {
+    return {
+      label: "Taslak (Dolduruluyor)",
+      badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
+    };
+  }
+  return {
+    label: "Öğrenciden Bekleniyor",
+    badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+  };
+}
+
+export const ACADEMIC_APP_STATUS_LABELS: Record<string, string> = {
+  PREPARING: "Hazırlanıyor",
+  APPLIED: "Başvuruldu",
+  CONDITIONAL_OFFER: "Şartlı Kabul",
+  UNCONDITIONAL_OFFER: "Kesin Kabul",
+  REJECTED: "Reddedildi",
+  ENROLLED: "Kayıt Tamamlandı",
+};
+
+export function formatAcademicAppStatus(status?: string | null): {
+  label: string;
+  badgeClass: string;
+} {
+  const s = (status || "").toUpperCase();
+  switch (s) {
+    case "ENROLLED":
+    case "UNCONDITIONAL_OFFER":
+      return {
+        label: ACADEMIC_APP_STATUS_LABELS[s] || "Kesin Kabul",
+        badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      };
+    case "CONDITIONAL_OFFER":
+      return {
+        label: "Şartlı Kabul",
+        badgeClass: "bg-indigo-100 text-indigo-800 border-indigo-200",
+      };
+    case "APPLIED":
+      return {
+        label: "Başvuruldu",
+        badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
+      };
+    case "REJECTED":
+      return {
+        label: "Reddedildi",
+        badgeClass: "bg-rose-100 text-rose-800 border-rose-200",
+      };
+    case "PREPARING":
+    default:
+      return {
+        label: "Hazırlanıyor",
+        badgeClass: "bg-amber-100 text-amber-800 border-amber-200",
+      };
+  }
+}
+
+

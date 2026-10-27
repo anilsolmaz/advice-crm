@@ -126,7 +126,7 @@ export default function Header({
               type="button"
               onClick={() => setNotifOpen((v) => !v)}
               className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-[#0f172a] transition-colors"
-              title="Bildirimler, Follow-up & Deadline Uyarıları"
+              title="Bildirimler, Takip & Son Tarih Uyarıları"
               aria-label="Bildirimler"
             >
               <Bell className="h-5 w-5" />
@@ -143,7 +143,7 @@ export default function Header({
                   <div>
                     <p className="text-xs font-bold">Advice Bildirim Merkezi</p>
                     <p className="text-[10px] text-slate-300">
-                      Follow-up, Deadline, @Mention &amp; Onaylar
+                      Takip, Son Tarih, @Etiket &amp; Onaylar
                     </p>
                   </div>
                   {pendingApprovals.length > 0 && (

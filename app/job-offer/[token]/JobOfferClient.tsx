@@ -86,7 +86,7 @@ export default function JobOfferClient({
                 className="h-9 w-auto object-contain"
               />
               <span className="rounded-full bg-[#0f172a] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-                Work &amp; Travel Resmi İş Teklifi (Job Offer)
+                Work &amp; Travel Resmi İş Teklifi
               </span>
             </div>
             <div className="text-xs font-mono text-slate-500">
@@ -220,23 +220,18 @@ export default function JobOfferClient({
         {/* Student Decision Box */}
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-bold text-[#0f172a]">
-                Öğrenci İş Teklifi Onay Formu
-              </h2>
-              <p className="text-xs text-slate-500">
-                Danışmanınız ({advisorName}) tarafından size özel atanan bu işi onaylayabilir veya reddedebilirsiniz.
-              </p>
-            </div>
+            <h2 className="text-lg font-bold text-[#0f172a]">
+              Öğrenci İş Teklifi Onay Formu
+            </h2>
 
             {currentStatus === "ACCEPTED" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-4 py-1.5 text-xs font-black text-emerald-800">
-                <CheckCircle2 className="h-4 w-4" /> İŞ TEKLİFİNİ ONAYLADINIZ
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-4 py-1.5 text-xs font-bold text-emerald-800">
+                <CheckCircle2 className="h-4 w-4" /> İş Teklifini Onayladınız
               </span>
             )}
             {currentStatus === "DECLINED" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-4 py-1.5 text-xs font-black text-red-800">
-                <XCircle className="h-4 w-4" /> İŞ TEKLİFİNİ REDDETTİNİZ
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-4 py-1.5 text-xs font-bold text-red-800">
+                <XCircle className="h-4 w-4" /> İş Teklifini Reddettiniz
               </span>
             )}
           </div>

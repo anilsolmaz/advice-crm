@@ -22,7 +22,7 @@ export const PROGRAM_REQUIRED_DOCS: Record<Program, RequiredDocConfig[]> = {
     { type: "SEVIS_RECEIPT", label: "SEVIS Makbuzu" },
     { type: "HEALTH_INSURANCE", label: "Sağlık Sigortası" },
     { type: "PASSPORT", label: "Pasaport" },
-    { type: "JOB_OFFER", label: "Job Offer" },
+    { type: "JOB_OFFER", label: "İş Teklifi" },
     { type: "TRANSCRIPT", label: "Transkript" },
     { type: "STUDENT_CERTIFICATE", label: "Öğrenci Belgesi" },
   ],
@@ -113,6 +113,7 @@ export function buildProgramSteps(student: any): ProgramStepItem[] {
     const isPaymentDone = hasPaidAll || manualIdx >= 4;
     const hasVisaAppt =
       wat?.ds160Status === "COMPLETED" ||
+      wat?.ds160Status === "SUBMITTED" ||
       Boolean(wat?.visaAppointmentDate) ||
       manualIdx >= 5;
     const isVisaApproved = Boolean(wat?.visaApproved) || manualIdx >= 6;
@@ -139,7 +140,7 @@ export function buildProgramSteps(student: any): ProgramStepItem[] {
     const labels = [
       { label: "Ön Kayıt", desc: "Sözleşme ve ön kayıt tamamlandı" },
       { label: "İş Seçimi", desc: "İş havuzu ve teklif inceleme" },
-      { label: "İş Yerleşimi", desc: "Job Offer onayı ve DS-2019 süreci" },
+      { label: "İş Yerleşimi", desc: "İş teklifi onayı ve DS-2019 süreci" },
       { label: "Ücret Tamamlandı", desc: "Program ödemesi kapandı" },
       { label: "Vize Randevusu", desc: "DS-160 formu ve vize randevusu" },
       { label: "Vize Onayı", desc: "J-1 vizesi onaylandı" },
@@ -173,7 +174,7 @@ export function buildProgramSteps(student: any): ProgramStepItem[] {
       { label: "İmzalı Sözleşme", desc: "Öğrenci ve okul imzası" },
       { label: "Okul Faturası", desc: "Gross Invoice oluşturuldu" },
       { label: "Ödeme & Tahsilat", desc: "Okul ödemesi tamamlandı" },
-      { label: "Kabul Mektubu (LOA)", desc: "Resmi kabul belgesi ve vize" },
+      { label: "Kabul Mektubu", desc: "Resmi kabul belgesi ve vize" },
     ];
 
     return labels.map((item, idx) => ({
@@ -209,7 +210,7 @@ export function buildProgramSteps(student: any): ProgramStepItem[] {
       { label: "Akademik Evraklar", desc: "Transkript, CV ve dil belgesi" },
       { label: "Üniversite Seçimi", desc: "Başvuru listesi oluşturuldu" },
       { label: "Başvuru Gönderimi", desc: "Üniversitelere başvuru yapıldı" },
-      { label: "Kabul (Offer Letter)", desc: "Üniversite kabul mektubu geldi" },
+      { label: "Kabul Mektubu", desc: "Üniversite kabul mektubu geldi" },
       { label: "Harç & Ödeme", desc: "Depozito ve danışmanlık ödemesi" },
       { label: "Vize & Kayıt", desc: "Öğrenci vizesi ve kesin kayıt" },
     ];

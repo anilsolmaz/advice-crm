@@ -49,15 +49,10 @@ export function Ds160FormSection({
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-        <div>
-          <h3 className="text-base font-bold text-[#0f172a] flex items-center gap-2">
-            <FileCheck className="h-5 w-5 text-[#1e3a8a]" />
-            ABD Vizesi DS-160 Bilgi Formu (Student Worksheet)
-          </h3>
-          <p className="text-xs text-slate-500">
-            Konsolosluk randevunuz için DS-160 form bilgilerinizi doldurup danışmanınıza iletin.
-          </p>
-        </div>
+        <h3 className="text-base font-bold text-[#0f172a] flex items-center gap-2">
+          <FileCheck className="h-5 w-5 text-[#1e3a8a]" />
+          ABD Vizesi DS-160 Bilgi Formu
+        </h3>
 
         <span
           className={`rounded-full px-3 py-1 text-xs font-bold ${
@@ -75,7 +70,7 @@ export function Ds160FormSection({
       <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
         <div>
           <label className="mb-1 block font-bold text-slate-700">
-            DS-160 Confirmation Number (AA00...)
+            DS-160 Onay Numarası (AA00...)
           </label>
           <input
             type="text"

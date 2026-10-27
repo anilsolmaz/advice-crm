@@ -124,9 +124,9 @@ export function JobPlacementTab({
               <select id="applicationStatus" name="applicationStatus" defaultValue={academyDetail?.applicationStatus ?? "Hazırlanıyor"} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white">
                 <option value="Hazırlanıyor">Hazırlanıyor</option>
                 <option value="Gönderildi">Gönderildi</option>
-                <option value="Şartlı Kabul">Şartlı Kabul (Conditional Offer)</option>
-                <option value="Şartsız Kabul">Şartsız Kabul (Unconditional Offer)</option>
-                <option value="Red">Red</option>
+                <option value="Şartlı Kabul">Şartlı Kabul</option>
+                <option value="Şartsız Kabul">Kesin Kabul</option>
+                <option value="Red">Reddedildi</option>
               </select>
             </div>
           </div>
