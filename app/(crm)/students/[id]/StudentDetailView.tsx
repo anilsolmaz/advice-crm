@@ -907,12 +907,18 @@ export function StudentDetailView({
                   onChange={(e) => setNoteTitle(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#0f172a] focus:outline-none"
                 >
-                  <option value="Görüşme Notu">Görüşme Notu</option>
-                  <option value="Vize & Evrak Notu">Vize &amp; Evrak Notu</option>
-                  <option value="WhatsApp Görüşmesi">WhatsApp Görüşmesi</option>
-                  <option value="İş / Okul Yerleştirme">İş / Okul Yerleştirme</option>
-                  <option value="Muhasebe & Taksit Notu">Muhasebe &amp; Taksit Notu</option>
-                  <option value="Özel Not">Özel Not</option>
+                  <optgroup label="İletişim & Çağrı">
+                    <option value="Görüşme Notu">📞 Görüşme Notu</option>
+                    <option value="WhatsApp Görüşmesi">💬 WhatsApp Görüşmesi</option>
+                  </optgroup>
+                  <optgroup label="Süreç & Operasyon">
+                    <option value="Vize & Evrak Notu">📁 Vize & Evrak Notu</option>
+                    <option value="İş / Okul Yerleştirme">🎓 İş / Okul Yerleştirme</option>
+                    <option value="Muhasebe & Taksit Notu">💳 Muhasebe & Taksit Notu</option>
+                  </optgroup>
+                  <optgroup label="Danışman Notu">
+                    <option value="Özel Not">🔒 Özel Not</option>
+                  </optgroup>
                 </select>
               </div>
 
