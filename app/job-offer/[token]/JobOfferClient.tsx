@@ -2,17 +2,27 @@
 
 import { useState, useTransition } from "react";
 import {
-  Plane,
+  Briefcase,
+  Calendar,
+  Clock,
+  Home,
+  DollarSign,
+  Utensils,
+  Bus,
+  Shirt,
+  Users,
   CheckCircle2,
   XCircle,
   MapPin,
-  DollarSign,
-  Calendar,
-  Home,
-  Briefcase,
+  Plane,
+  Sparkles,
+  Info,
+  Building2,
+  FileCheck,
 } from "lucide-react";
 import { respondToJobOffer } from "@/actions/crm/jobs";
 import { formatDate } from "@/lib/utils/date";
+import { cn } from "@/lib/utils/cn";
 
 interface Props {
   shareToken: string;
@@ -55,17 +65,31 @@ export default function JobOfferClient({
   studentName,
   advisorName,
   studentNote,
+  respondedAt,
   job,
 }: Props) {
   const [note, setNote] = useState(studentNote || "");
   const [currentStatus, setCurrentStatus] = useState(status);
+  const [lastRespondedAt, setLastRespondedAt] = useState<string | null>(respondedAt);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const weeklyEstGross = (
+    Number(job.hourlyWage || 0) * (job.avgWorkingHours || 0)
+  ).toFixed(0);
+
   function handleDecision(decision: "ACCEPTED" | "DECLINED") {
+    setFeedback(null);
     startTransition(async () => {
       const res = await respondToJobOffer(shareToken, decision, note);
       if (res.success) {
         setCurrentStatus(decision);
+        setLastRespondedAt(new Date().toISOString());
+        setFeedback(
+          decision === "ACCEPTED"
+            ? "İş teklifini başarıyla onayladınız. Danışmanınıza bilgi iletildi."
+            : "İş teklifini reddettiniz. Danışmanınız yeni iş seçenekleri için sizinle iletişime geçecektir.",
+        );
       } else {
         alert(res.error);
       }
@@ -73,179 +97,284 @@ export default function JobOfferClient({
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-slate-50 text-slate-800 py-8 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl space-y-6">
-        {/* Boarding Pass Top Header */}
-        <div className="overflow-hidden rounded-3xl bg-[#0f172a] text-white shadow-2xl border border-slate-800">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 px-6 py-4 bg-white text-slate-900">
-            <div className="flex items-center gap-3">
+        {/* Top Branding & Meta Header */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/advice-logo.svg"
                 alt="Advice Yurtdışı Eğitim"
                 className="h-9 w-auto object-contain"
               />
-              <span className="rounded-full bg-[#0f172a] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+              <div className="h-6 w-px bg-slate-200" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-100 px-3 py-1 text-xs font-bold text-[#1e3a8a]">
+                <FileCheck className="h-3.5 w-3.5 text-[#1e3a8a]" />
                 Work &amp; Travel Resmi İş Teklifi
               </span>
             </div>
-            <div className="text-xs font-mono text-slate-500">
-              YOLCU / ÖĞRENCİ:{" "}
-              <strong className="text-slate-900">{studentName}</strong>
-            </div>
-          </div>
 
-          <div className="p-6 sm:p-8 space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-sky-400 uppercase tracking-wider">
-                  <Plane className="h-4 w-4" />
-                  <span>
-                    {job.sponsor} SPONSORLU · {job.jobCategory} ·{" "}
-                    {job.placementType}
-                  </span>
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="text-slate-600">
+                Öğrenci: <strong className="text-slate-900 font-bold">{studentName}</strong>
+              </div>
+              {advisorName && (
+                <div className="text-slate-600 border-l border-slate-200 pl-4">
+                  Danışman: <strong className="text-slate-900 font-bold">{advisorName}</strong>
                 </div>
-                <h1 className="mt-1 text-2xl sm:text-3xl font-black text-white">
-                  {job.jobTitle}
-                </h1>
-                <p className="mt-1 text-sm text-slate-300 flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-rose-400" />
-                  {job.location} {job.state ? `(${job.state})` : ""} · Varış
-                  Havalimanı: {job.arrivalAirport || "Belirtilmedi"}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-emerald-500/20 border border-emerald-400/30 px-4 py-3 text-right">
-                <span className="block text-[10px] font-bold uppercase text-emerald-300">
-                  SAATLİK ÜCRET (HOURLY WAGE)
-                </span>
-                <span className="text-2xl font-black text-emerald-300">
-                  ${job.hourlyWage} / saat
-                </span>
-                <span className="block text-[11px] text-slate-300">
-                  Ort. {job.avgWorkingHours} saat / hafta
-                </span>
-              </div>
+              )}
             </div>
-
-            {/* 22-Field Detail Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
-              <div className="rounded-xl bg-slate-800/90 p-3 border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Pozisyon
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-white">
-                  {job.position || job.jobTitle}
-                </span>
-              </div>
-              <div className="rounded-xl bg-slate-800/90 p-3 border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Çalışma Tarihleri
-                </span>
-                <span className="text-xs font-bold text-white">
-                  {formatDate(job.jobStartDate)} – {formatDate(job.jobEndDate)}
-                </span>
-              </div>
-              <div className="rounded-xl bg-slate-800/90 p-3 border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Konaklama Ücreti
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-white">
-                  {job.accommodationCost
-                    ? `$${job.accommodationCost} / hafta`
-                    : "İşveren Sağlamıyor"}
-                </span>
-              </div>
-              <div className="rounded-xl bg-slate-800/90 p-3 border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Konaklama Depozitosu
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-white">
-                  {job.accommodationDeposit
-                    ? `$${job.accommodationDeposit}`
-                    : "Yok"}
-                </span>
-              </div>
-              <div className="rounded-xl bg-slate-800/90 p-3 border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Yemek (Food)
-                </span>
-                <span className="text-xs font-bold text-white">
-                  {job.food || "Belirtilmedi"}
-                </span>
-              </div>
-              <div className="rounded-xl bg-slate-800/90 p-3 border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Ulaşım (Transportation)
-                </span>
-                <span className="text-xs font-bold text-white">
-                  {job.transportation || "Belirtilmedi"}
-                </span>
-              </div>
-              <div className="rounded-xl bg-slate-800/90 p-3 border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  İş Kıyafeti (Apparel)
-                </span>
-                <span className="text-xs font-bold text-white">
-                  {job.workApparel || "Belirtilmedi"}
-                </span>
-              </div>
-              <div className="rounded-xl bg-slate-800/90 p-3 border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Cinsiyet &amp; Erken Ayrılış
-                </span>
-                <span className="text-xs font-bold text-white">
-                  {job.genderPreference} · {job.earlyLeaveInfo || "Standart"}
-                </span>
-              </div>
-            </div>
-
-            {(job.bonus || job.additionalInfo) && (
-              <div className="rounded-2xl bg-slate-800/70 border border-slate-700 p-4 space-y-1.5 text-xs">
-                {job.bonus && (
-                  <p className="font-bold text-emerald-300">
-                    ★ Sezon Sonu Bonusu: {job.bonus}
-                  </p>
-                )}
-                {job.additionalInfo && (
-                  <p className="text-slate-300 leading-relaxed">
-                    {job.additionalInfo}
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Student Decision Box */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-bold text-[#0f172a]">
-              Öğrenci İş Teklifi Onay Formu
-            </h2>
+        {/* Feedback Alert if submitted */}
+        {feedback && (
+          <div
+            className={cn(
+              "rounded-2xl border p-4 text-sm font-semibold flex items-center gap-3 transition-all",
+              currentStatus === "ACCEPTED"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : "border-amber-200 bg-amber-50 text-amber-900",
+            )}
+          >
+            {currentStatus === "ACCEPTED" ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+            ) : (
+              <Info className="h-5 w-5 text-amber-600 shrink-0" />
+            )}
+            <span>{feedback}</span>
+          </div>
+        )}
+
+        {/* Job Offer Main Content Card */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
+          {/* Header & Badges */}
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                {job.sponsor} Sponsorluğunda
+              </span>
+              <span className="inline-flex items-center rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-[#1e3a8a] border border-blue-100">
+                {job.jobCategory}
+              </span>
+              <span className="inline-flex items-center rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 border border-slate-200">
+                {job.placementType}
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {job.jobTitle}
+            </h1>
+
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-600">
+              <span className="flex items-center gap-1.5 font-medium">
+                <MapPin className="h-4 w-4 text-rose-500 shrink-0" />
+                {job.location} {job.state ? `(${job.state})` : ""}
+              </span>
+              {job.arrivalAirport && (
+                <span className="flex items-center gap-1.5 text-slate-500 border-l border-slate-200 pl-4">
+                  <Plane className="h-4 w-4 text-sky-500 shrink-0" />
+                  Varış Havalimanı: <strong className="text-slate-800 font-medium">{job.arrivalAirport}</strong>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Highlights Banner: Hourly Wage & Hours */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50/70 via-emerald-50/30 to-slate-50/50 p-4 sm:p-5">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                Saatlik Ücret
+              </p>
+              <p className="mt-1 text-2xl sm:text-3xl font-black text-emerald-700">
+                ${job.hourlyWage}{" "}
+                <span className="text-xs font-semibold text-emerald-600">/ saat</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Haftalık Çalışma Saati
+              </p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-800">
+                Ort. {job.avgWorkingHours}{" "}
+                <span className="text-xs font-medium text-slate-500">saat / hafta</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Tahmini Haftalık Brüt Gelir
+              </p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-800">
+                ~${weeklyEstGross}{" "}
+                <span className="text-xs font-medium text-slate-500">/ hafta</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Detailed Job Parameters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
+                <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+                Pozisyon
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900">
+                {job.position || job.jobTitle}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
+                <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                Çalışma Tarihleri
+              </div>
+              <p className="text-xs font-bold text-slate-900">
+                {formatDate(job.jobStartDate)} – {formatDate(job.jobEndDate)}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
+                <Home className="h-3.5 w-3.5 text-slate-400" />
+                Konaklama Ücreti
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900">
+                {job.accommodationCost
+                  ? `$${job.accommodationCost} / hafta`
+                  : "İşveren Sağlamıyor"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
+                <DollarSign className="h-3.5 w-3.5 text-slate-400" />
+                Konaklama Depozitosu
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900">
+                {job.accommodationDeposit
+                  ? `$${job.accommodationDeposit}`
+                  : "Depozito Yok"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
+                <Utensils className="h-3.5 w-3.5 text-slate-400" />
+                Yemek Olanakları
+              </div>
+              <p className="text-xs sm:text-sm font-semibold text-slate-800">
+                {job.food || "Belirtilmedi"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
+                <Bus className="h-3.5 w-3.5 text-slate-400" />
+                Ulaşım Olanakları
+              </div>
+              <p className="text-xs sm:text-sm font-semibold text-slate-800">
+                {job.transportation || "Belirtilmedi"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
+                <Shirt className="h-3.5 w-3.5 text-slate-400" />
+                İş Kıyafeti
+              </div>
+              <p className="text-xs sm:text-sm font-semibold text-slate-800">
+                {job.workApparel || "Belirtilmedi"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1">
+                <Users className="h-3.5 w-3.5 text-slate-400" />
+                Cinsiyet &amp; Erken Ayrılış
+              </div>
+              <p className="text-xs sm:text-sm font-semibold text-slate-800">
+                {job.genderPreference} · {job.earlyLeaveInfo || "Standart"}
+              </p>
+            </div>
+          </div>
+
+          {/* Bonus & Additional Notes */}
+          {(job.bonus || job.additionalInfo) && (
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-xs">
+              {job.bonus && (
+                <div className="flex items-start gap-2 text-emerald-800 font-medium">
+                  <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold text-emerald-900">Sezon Sonu Bonusu:</strong>{" "}
+                    {job.bonus}
+                  </span>
+                </div>
+              )}
+              {job.additionalInfo && (
+                <div className="flex items-start gap-2 text-slate-700">
+                  <Info className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{job.additionalInfo}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Student Decision & Response Card */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Öğrenci İş Teklifi Onay ve Yanıt Formu
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Lütfen iş şartlarını ve konaklama koşullarını inceledikten sonra kararınızı iletin.
+              </p>
+            </div>
 
             {currentStatus === "ACCEPTED" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-4 py-1.5 text-xs font-bold text-emerald-800">
-                <CheckCircle2 className="h-4 w-4" /> İş Teklifini Onayladınız
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 text-xs font-bold text-emerald-700">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                İş Teklifini Onayladınız
+                {lastRespondedAt && (
+                  <span className="font-normal text-emerald-600/80">
+                    ({formatDate(lastRespondedAt)})
+                  </span>
+                )}
               </span>
             )}
             {currentStatus === "DECLINED" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-4 py-1.5 text-xs font-bold text-red-800">
-                <XCircle className="h-4 w-4" /> İş Teklifini Reddettiniz
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3.5 py-1.5 text-xs font-bold text-red-700">
+                <XCircle className="h-4 w-4 text-red-600" />
+                İş Teklifini Reddettiniz
+                {lastRespondedAt && (
+                  <span className="font-normal text-red-600/80">
+                    ({formatDate(lastRespondedAt)})
+                  </span>
+                )}
+              </span>
+            )}
+            {currentStatus !== "ACCEPTED" && currentStatus !== "DECLINED" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3.5 py-1.5 text-xs font-bold text-amber-700">
+                <Clock className="h-4 w-4 text-amber-600" />
+                Yanıtınız Bekleniyor
               </span>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold text-slate-700">
+            <label className="mb-1.5 block text-xs font-bold text-slate-700">
               Danışmanınıza Notunuz (Opsiyonel)
             </label>
             <textarea
-              rows={2}
+              rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Varsa arkadaş grubunuzla birlikte yerleşim talebiniz veya sorularınız…"
-              className="w-full rounded-xl border border-slate-200 p-3 text-xs sm:text-sm text-slate-800"
+              placeholder="Varsa arkadaş grubunuzla birlikte yerleşim talebiniz, sormak istediğiniz sorular veya karar gerekçeniz…"
+              className="w-full rounded-xl border border-slate-200 p-3 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:ring-1 focus:ring-[#1e3a8a] outline-none"
             />
           </div>
 
@@ -254,20 +383,30 @@ export default function JobOfferClient({
               type="button"
               disabled={isPending}
               onClick={() => handleDecision("DECLINED")}
-              className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-2.5 text-xs sm:text-sm font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+              className={cn(
+                "flex items-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-2.5 text-xs sm:text-sm font-bold text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50",
+                currentStatus === "DECLINED" && "bg-red-50 ring-2 ring-red-300",
+              )}
             >
               <XCircle className="h-4 w-4" />
-              Bu İşi Reddet
+              {currentStatus === "DECLINED" ? "Teklifi Reddettiniz" : "Bu İşi Reddet"}
             </button>
 
             <button
               type="button"
               disabled={isPending}
               onClick={() => handleDecision("ACCEPTED")}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs sm:text-sm font-black text-white shadow-md hover:bg-emerald-700 disabled:opacity-50"
+              className={cn(
+                "flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50",
+                currentStatus === "ACCEPTED" && "bg-emerald-700 ring-2 ring-emerald-400",
+              )}
             >
               <CheckCircle2 className="h-4 w-4" />
-              {isPending ? "İşleniyor…" : "İşi Onayla / Kabul Et"}
+              {isPending
+                ? "İşleniyor…"
+                : currentStatus === "ACCEPTED"
+                  ? "Teklifi Onayladınız"
+                  : "İş Teklifini Onayla"}
             </button>
           </div>
         </div>
