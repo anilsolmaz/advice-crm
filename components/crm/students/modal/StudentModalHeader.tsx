@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Printer, Camera, MessageCircle, Mail } from "lucide-react";
+import { Printer, Camera, MessageCircle, Mail, Phone, User } from "lucide-react";
 import type { CRMStudentDetail, CRMWatDetail } from "@/types/crm";
 import { PROGRAM_LABELS } from "@/types/crm";
 import { ProgramBadge } from "@/components/crm/common/ProgramBadge";
@@ -81,18 +81,25 @@ export function StudentModalHeader({ student, watDetail }: Props) {
                 </h2>
                 <ProgramBadge program={student.program} showIcon size="sm" />
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs">
                 {student.user.phone && (
-                  <span className="font-bold text-slate-800">
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-800">
+                    <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                     {student.user.phone}
                   </span>
                 )}
+                {student.user.email && (
+                  <>
+                    <span className="text-slate-300">·</span>
+                    <span className="inline-flex items-center gap-1.5 font-medium text-slate-600">
+                      <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      {student.user.email}
+                    </span>
+                  </>
+                )}
                 <span className="text-slate-300">·</span>
-                <span className="font-medium text-slate-600">
-                  {student.user.email}
-                </span>
-                <span className="text-slate-300">·</span>
-                <span className="text-slate-500">
+                <span className="inline-flex items-center gap-1.5 text-slate-600">
+                  <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   Danışman:{" "}
                   <strong className="text-[#1e3a8a]">{cleanAdvisorText}</strong>
                 </span>

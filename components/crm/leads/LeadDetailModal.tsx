@@ -11,6 +11,8 @@ import {
   AlertCircle,
   MessageCircle,
   Mail,
+  Phone,
+  MapPin,
   User,
   Clock,
   Plus,
@@ -362,19 +364,28 @@ export function LeadDetailModal({
                   <LeadStatusBadge status={lead.status} />
                 </div>
 
-                {/* Telefon ve E-Posta: İsim altında büyük & net */}
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span className="text-sm font-bold text-slate-800">
-                    {lead.phone}
-                  </span>
-                  <span className="text-slate-300">·</span>
-                  <span className="text-sm font-medium text-slate-500">
-                    {lead.email}
-                  </span>
+                {/* Telefon, E-Posta ve Şehir: İsim altında tatlı ikonlarla */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs">
+                  {lead.phone && (
+                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-800">
+                      <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      {lead.phone}
+                    </span>
+                  )}
+                  {lead.email && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className="inline-flex items-center gap-1.5 font-medium text-slate-600">
+                        <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        {lead.email}
+                      </span>
+                    </>
+                  )}
                   {lead.city && (
                     <>
                       <span className="text-slate-300">·</span>
-                      <span className="text-xs font-semibold text-slate-400">
+                      <span className="inline-flex items-center gap-1.5 font-medium text-slate-500">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                         {lead.city}
                       </span>
                     </>
