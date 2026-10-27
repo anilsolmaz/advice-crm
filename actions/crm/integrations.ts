@@ -158,14 +158,36 @@ export async function sendDirectEmailAction(params: {
 
     // Record in Lead or Student timeline
     if (params.leadId) {
-      await prisma.leadCallLog.create({
-        data: {
-          leadId: params.leadId,
-          advisorId: staff.id,
-          outcome: "REACHED",
-          notes: `✉️ [E-POSTA GÖNDERİLDİ] Konu: "${params.subject}"`,
-        },
+      const existingLead = await prisma.lead.findUnique({
+        where: { id: params.leadId },
+        select: { notes: true },
       });
+      const dateStr = new Date().toLocaleDateString("tr-TR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const emailLogEntry = `[${dateStr} · ${staff.fullName} · E-Posta Gönderimi]: Konu: "${params.subject}"`;
+      const updatedNotes = existingLead?.notes
+        ? `${existingLead.notes}\n\n${emailLogEntry}`
+        : emailLogEntry;
+
+      await prisma.$transaction([
+        prisma.leadCallLog.create({
+          data: {
+            leadId: params.leadId,
+            advisorId: staff.id,
+            outcome: "REACHED",
+            notes: `✉️ [E-POSTA GÖNDERİLDİ] Konu: "${params.subject}"`,
+          },
+        }),
+        prisma.lead.update({
+          where: { id: params.leadId },
+          data: { notes: updatedNotes },
+        }),
+      ]);
       revalidatePath("/leads");
     }
 

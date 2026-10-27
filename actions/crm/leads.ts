@@ -10,8 +10,29 @@ import crypto from "crypto";
 import type { LeadStatus, LeadSource, Program } from "@prisma/client";
 
 export type LeadFormState =
-  | { success: true; duplicateWarning?: string }
+  | { success: true; duplicateWarning?: string; updatedNotes?: string | null }
   | { success: false; error: string; isDuplicate?: boolean };
+
+const SOURCE_LABELS_TR: Record<string, string> = {
+  META_ADS: "Meta Lead Ads",
+  GOOGLE_ADS: "Google Ads",
+  INSTAGRAM: "Instagram",
+  TIKTOK: "TikTok",
+  WHATSAPP: "WhatsApp",
+  WEBSITE: "Web Sitesi",
+  REFERRAL: "Referans",
+  OTHER: "Manuel Kayıt",
+};
+
+function formatTrDateTime(date: Date = new Date()): string {
+  return date.toLocaleDateString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 // ── createLead (with Duplicate Lead Check - Section 2 & 10) ───────────────────
 
@@ -57,6 +78,10 @@ export async function createLead(
   }
 
   const assignedAdvisorId = (formData.get("advisorId") as string) || advisor.id;
+  const sourceLabel = SOURCE_LABELS_TR[source] || source;
+  const formattedNotes = notes
+    ? `[${formatTrDateTime()} · ${advisor.fullName} · İlk Kayıt (${sourceLabel})]: ${notes}`
+    : null;
 
   await prisma.lead.create({
     data: {
@@ -69,7 +94,7 @@ export async function createLead(
       city,
       visaStatus,
       followUpAt: followUpAtRaw ? new Date(followUpAtRaw) : null,
-      notes,
+      notes: formattedNotes,
       advisorId: assignedAdvisorId,
       status: "INTERESTED",
     },
@@ -105,12 +130,19 @@ export async function updateLead(
   _prev: LeadFormState,
   formData: FormData,
 ): Promise<LeadFormState> {
-  await requireStaff();
+  const advisor = await requireStaff();
+
+  const existingLead = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!existingLead) {
+    return { success: false, error: "Aday bulunamadı." };
+  }
 
   const fullName = (formData.get("fullName") as string)?.trim();
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   const phone = (formData.get("phone") as string)?.trim();
-  const notes = formData.get("notes") as string | null;
+  const newNote = (formData.get("newNote") as string)?.trim();
+  const noteTitle =
+    (formData.get("noteTitle") as string)?.trim() || "Görüşme Detayı";
   const source = formData.get("source") as LeadSource | null;
   const status = formData.get("status") as LeadStatus | null;
   const program = formData.get("program") as Program | null;
@@ -120,13 +152,21 @@ export async function updateLead(
   const advisorId = formData.get("advisorId") as string | null;
   const followUpAtRaw = formData.get("followUpAt") as string | null;
 
+  let updatedNotes = existingLead.notes;
+  if (newNote) {
+    const newEntry = `[${formatTrDateTime()} · ${advisor.fullName} · ${noteTitle}]: ${newNote}`;
+    updatedNotes = existingLead.notes
+      ? `${existingLead.notes}\n\n${newEntry}`
+      : newEntry;
+  }
+
   await prisma.lead.update({
     where: { id: leadId },
     data: {
       ...(fullName ? { fullName } : {}),
       ...(email ? { email } : {}),
       ...(phone ? { phone } : {}),
-      notes,
+      notes: updatedNotes,
       ...(source ? { source } : {}),
       ...(status ? { status } : {}),
       ...(program ? { program } : {}),
@@ -145,7 +185,37 @@ export async function updateLead(
 
   revalidatePath("/leads");
   revalidatePath("/dashboard");
-  return { success: true };
+  return { success: true, updatedNotes };
+}
+
+// ── appendLeadNoteCard (Quick Note Card Entry) ───────────────────────────────
+
+export async function appendLeadNoteCard(
+  leadId: string,
+  noteTitle: string,
+  noteText: string,
+): Promise<LeadFormState> {
+  const advisor = await requireStaff();
+  const trimmed = noteText.trim();
+  if (!trimmed) {
+    return { success: false, error: "Not metni boş olamaz." };
+  }
+
+  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!lead) return { success: false, error: "Aday bulunamadı." };
+
+  const cleanTitle = noteTitle.trim() || "Görüşme Notu";
+  const newEntry = `[${formatTrDateTime()} · ${advisor.fullName} · ${cleanTitle}]: ${trimmed}`;
+  const updatedNotes = lead.notes ? `${lead.notes}\n\n${newEntry}` : newEntry;
+
+  await prisma.lead.update({
+    where: { id: leadId },
+    data: { notes: updatedNotes },
+  });
+
+  revalidatePath("/leads");
+  revalidatePath("/dashboard");
+  return { success: true, updatedNotes };
 }
 
 // ── logLeadCall (Call Result + Next Follow-up Date - Section 2 [P1]) ──────────
@@ -163,13 +233,7 @@ export async function logLeadCall(
   if (!lead) return { success: false, error: "Aday bulunamadı." };
 
   const now = new Date();
-  const dateStr = now.toLocaleDateString("tr-TR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const dateStr = formatTrDateTime(now);
 
   const OUTCOME_LABELS: Record<string, string> = {
     REACHED: "Ulaşıldı / Görüşüldü",
@@ -211,7 +275,7 @@ export async function logLeadCall(
 
   revalidatePath("/leads");
   revalidatePath("/dashboard");
-  return { success: true };
+  return { success: true, updatedNotes };
 }
 
 // ── postponeLeadFollowUp (1-Click Follow-Up Postpone Button) ──────────────────
@@ -252,15 +316,7 @@ export async function addLeadNote(
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) return { success: false, error: "Aday bulunamadı." };
 
-  const now = new Date();
-  const dateStr = now.toLocaleDateString("tr-TR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const newEntry = `[${dateStr} - ${advisor.fullName}]: ${noteText}`;
+  const newEntry = `[${formatTrDateTime()} · ${advisor.fullName} · Hızlı Not]: ${noteText}`;
   const updatedNotes = lead.notes ? `${lead.notes}\n\n${newEntry}` : newEntry;
 
   await prisma.lead.update({
@@ -269,7 +325,7 @@ export async function addLeadNote(
   });
 
   revalidatePath("/leads");
-  return { success: true };
+  return { success: true, updatedNotes };
 }
 
 // ── deleteLead ────────────────────────────────────────────────────────────────

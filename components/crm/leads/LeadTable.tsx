@@ -594,7 +594,7 @@ export function LeadTable({
       {/* Lead Detail & Full Edit Modal */}
       {activeModalLead && (
         <LeadDetailModal
-          lead={activeModalLead}
+          lead={leads.find((l) => l.id === activeModalLead.id) ?? activeModalLead}
           advisors={advisors}
           onClose={() => setActiveModalLead(null)}
         />
