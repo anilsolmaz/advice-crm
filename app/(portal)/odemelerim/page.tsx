@@ -3,8 +3,9 @@ import { requireStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, isOverdue } from "@/lib/utils/currency";
 import { formatDateShort } from "@/lib/utils/date";
-import { CreditCard, CheckCircle2, AlertCircle, Clock, Building2, Copy } from "lucide-react";
+import { CreditCard, CheckCircle2, AlertCircle, Clock, Building2 } from "lucide-react";
 import { PAYMENT_STATUS_LABELS } from "@/types/crm";
+import { InstallmentProofButton } from "@/components/portal/payments/InstallmentProofButton";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +121,7 @@ export default async function StudentPaymentsPage() {
                         <th className="py-2.5 px-4 text-left font-semibold">Vade Tarihi</th>
                         <th className="py-2.5 px-4 text-left font-semibold">Durum</th>
                         <th className="py-2.5 px-4 text-left font-semibold">Ödeme Tarihi</th>
+                        <th className="py-2.5 px-4 text-right font-semibold">Dekont / Ödeme Bildirimi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50 text-gray-700">
@@ -138,6 +140,10 @@ export default async function StudentPaymentsPage() {
                                 <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-semibold">
                                   <CheckCircle2 className="h-3 w-3" /> Ödendi
                                 </span>
+                              ) : inst.receiptUrl ? (
+                                <span className="inline-flex items-center gap-1 text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
+                                  <Clock className="h-3 w-3" /> Onay Bekliyor
+                                </span>
                               ) : overdue ? (
                                 <span className="inline-flex items-center gap-1 text-red-700 bg-red-50 px-2 py-0.5 rounded-full font-semibold">
                                   <AlertCircle className="h-3 w-3" /> Gecikmiş
@@ -150,6 +156,20 @@ export default async function StudentPaymentsPage() {
                             </td>
                             <td className="py-3 px-4 text-gray-400">
                               {inst.paidAt ? formatDateShort(inst.paidAt) : "—"}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex justify-end">
+                                <InstallmentProofButton
+                                  studentId={student.id}
+                                  installmentId={inst.id}
+                                  sequence={inst.sequence}
+                                  amount={inst.amount.toString()}
+                                  currency={inst.currency}
+                                  isPaid={inst.isPaid}
+                                  receiptUrl={inst.receiptUrl}
+                                  paymentMethod={inst.paymentMethod}
+                                />
+                              </div>
                             </td>
                           </tr>
                         );

@@ -52,10 +52,9 @@ export function PortalNavbar({ user, pendingApprovalsCount }: Props) {
             className="h-10 w-auto object-contain"
           />
           <div className="hidden sm:block border-l border-slate-200 pl-3">
-            <span className="rounded-full bg-[#0f172a] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-              Boarding Pass · Öğrenci Portalı
-            </span>
-            <p className="text-[11px] text-slate-500 mt-0.5">Hoş geldin, {user.fullName}</p>
+            <p className="text-xs font-semibold text-slate-700">
+              Hoş geldin, <span className="text-[#0f172a] font-bold">{user.fullName}</span>
+            </p>
           </div>
         </Link>
 

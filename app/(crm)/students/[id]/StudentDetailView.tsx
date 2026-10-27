@@ -37,7 +37,15 @@ import { ProgramBadge } from "@/components/crm/common/ProgramBadge";
 import { EmailComposeModal } from "@/components/crm/common/EmailComposeModal";
 import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
-import { toggleInstallmentPaid, advanceWatStep } from "@/actions/crm/students";
+import {
+  toggleInstallmentPaid,
+  advanceWatStep,
+  updateWatDetail,
+  reviewStudentDocument,
+  uploadDocumentByAdvisor,
+  createStudentPaymentPlan,
+} from "@/actions/crm/students";
+import { createStudentJobLink } from "@/actions/crm/jobs";
 import { createAdvisorNote } from "@/actions/crm/notes";
 import {
   createAcademicApplication,
@@ -65,15 +73,63 @@ function NoteSubmitButton() {
 interface Props {
   student: any;
   staffList?: { id: string; fullName: string }[];
+  availableWatJobs?: {
+    id: string;
+    sponsor: string;
+    jobTitle: string;
+    location: string;
+    hourlyWage: string;
+  }[];
 }
 
-export function StudentDetailView({ student, staffList = [] }: Props) {
+export function StudentDetailView({
+  student,
+  staffList = [],
+  availableWatJobs = [],
+}: Props) {
   const [activeTab, setActiveTab] = useState<
     "personal" | "program" | "applications" | "payments" | "documents" | "notes"
   >("program");
   const [isPending, startTransition] = useTransition();
   const [noteText, setNoteText] = useState("");
   const [showEmailModal, setShowEmailModal] = useState(false);
+
+  // Editable WAT Placement & Visa State
+  const [watForm, setWatForm] = useState({
+    sponsorName: student.watDetail?.sponsorName || "AWA",
+    sponsorDsNumber: student.watDetail?.sponsorDsNumber || "",
+    sevisId: student.watDetail?.sevisId || "",
+    employerName: student.watDetail?.employerName || "",
+    jobTitle: student.watDetail?.jobTitle || "",
+    employerState: student.watDetail?.employerState || "",
+    currentStage: student.watDetail?.currentStage || "PRE_REGISTRATION",
+    passportDeadline: student.watDetail?.passportDeadline
+      ? new Date(student.watDetail.passportDeadline).toISOString().slice(0, 10)
+      : "2026-03-15",
+    visaDeadline: student.watDetail?.visaDeadline
+      ? new Date(student.watDetail.visaDeadline).toISOString().slice(0, 10)
+      : "2026-04-20",
+    visaApproved: Boolean(student.watDetail?.visaApproved),
+  });
+  const [selectedJobPoolId, setSelectedJobPoolId] = useState(
+    availableWatJobs[0]?.id || "",
+  );
+  const [watSavedMsg, setWatSavedMsg] = useState<string | null>(null);
+
+  // Advisor New Payment Plan State
+  const [showNewPaymentForm, setShowNewPaymentForm] = useState(false);
+  const [newPaymentForm, setNewPaymentForm] = useState({
+    description: "Program Kayıt & Danışmanlık Bedeli",
+    totalAmount: "3200",
+    currency: "USD" as "USD" | "EUR" | "GBP" | "TRY",
+    installmentCount: 3,
+    firstDueDate: new Date().toISOString().slice(0, 10),
+  });
+
+  // Advisor Document Upload State
+  const [advisorDocType, setAdvisorDocType] = useState("DS_2019");
+  const [advisorDocFile, setAdvisorDocFile] = useState<File | null>(null);
+  const [isUploadingAdvisorDoc, setIsUploadingAdvisorDoc] = useState(false);
 
   // WAT Accommodation Commission state
   const [accSold, setAccSold] = useState<boolean>(
@@ -549,6 +605,271 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
                       className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-800"
                     >
                       Muhasebeye Yansıt
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Editable WAT Placement, Visa & Stage Form */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-[#0f172a] uppercase tracking-wider">
+                    İş Yerleştirme, DS-2019, Vize &amp; Aşama Bilgilerini Düzenle
+                  </h4>
+                  {watSavedMsg && (
+                    <span className="font-bold text-emerald-700">
+                      ✓ {watSavedMsg}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      Güncel Aşama (8 Adım)
+                    </label>
+                    <select
+                      value={watForm.currentStage}
+                      onChange={(e) =>
+                        setWatForm({ ...watForm, currentStage: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-semibold"
+                    >
+                      <option value="PRE_REGISTRATION">1. Ön Kayıt</option>
+                      <option value="JOB_SELECTION">2. İş Seçimi</option>
+                      <option value="JOB_PLACEMENT">3. İş Yerleşimi</option>
+                      <option value="PAYMENT_COMPLETED">4. Ücret Tamamlandı</option>
+                      <option value="VISA_APPOINTMENT">5. Vize Randevusu</option>
+                      <option value="VISA_APPROVED">6. Vize Onayı</option>
+                      <option value="ORIENTATION">7. Oryantasyon</option>
+                      <option value="DEPARTURE">8. Amerika&apos;ya Gidiş</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      Sponsor Kuruluş
+                    </label>
+                    <select
+                      value={watForm.sponsorName}
+                      onChange={(e) =>
+                        setWatForm({ ...watForm, sponsorName: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                    >
+                      <option value="AWA">AWA</option>
+                      <option value="UWT">UWT</option>
+                      <option value="IEE">IEE</option>
+                      <option value="Life Adventures">Life Adventures</option>
+                      <option value="Intrax">Intrax</option>
+                      <option value="Diğer">Diğer</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      İşveren (Employer)
+                    </label>
+                    <input
+                      type="text"
+                      value={watForm.employerName}
+                      onChange={(e) =>
+                        setWatForm({ ...watForm, employerName: e.target.value })
+                      }
+                      placeholder="Örn: Wilderness Resort"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      İş Pozisyonu
+                    </label>
+                    <input
+                      type="text"
+                      value={watForm.jobTitle}
+                      onChange={(e) =>
+                        setWatForm({ ...watForm, jobTitle: e.target.value })
+                      }
+                      placeholder="Örn: Lifeguard / Server"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      ABD Eyaleti / Şehir
+                    </label>
+                    <input
+                      type="text"
+                      value={watForm.employerState}
+                      onChange={(e) =>
+                        setWatForm({ ...watForm, employerState: e.target.value })
+                      }
+                      placeholder="Örn: Wisconsin Dells, WI"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      DS-2019 Numarası
+                    </label>
+                    <input
+                      type="text"
+                      value={watForm.sponsorDsNumber}
+                      onChange={(e) =>
+                        setWatForm({
+                          ...watForm,
+                          sponsorDsNumber: e.target.value,
+                        })
+                      }
+                      placeholder="N00..."
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      SEVIS ID
+                    </label>
+                    <input
+                      type="text"
+                      value={watForm.sevisId}
+                      onChange={(e) =>
+                        setWatForm({ ...watForm, sevisId: e.target.value })
+                      }
+                      placeholder="N00..."
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      Pasaport Deadline
+                    </label>
+                    <input
+                      type="date"
+                      value={watForm.passportDeadline}
+                      onChange={(e) =>
+                        setWatForm({
+                          ...watForm,
+                          passportDeadline: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block font-semibold text-slate-600">
+                      Vize Deadline
+                    </label>
+                    <input
+                      type="date"
+                      value={watForm.visaDeadline}
+                      onChange={(e) =>
+                        setWatForm({ ...watForm, visaDeadline: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                    />
+                  </div>
+
+                  <div className="flex items-end pb-1">
+                    <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={watForm.visaApproved}
+                        onChange={(e) =>
+                          setWatForm({
+                            ...watForm,
+                            visaApproved: e.target.checked,
+                          })
+                        }
+                      />
+                      <span>Vize Onaylandı</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      startTransition(async () => {
+                        const res = await updateWatDetail(student.id, {
+                          sponsorName: watForm.sponsorName,
+                          sponsorDsNumber: watForm.sponsorDsNumber || null,
+                          sevisId: watForm.sevisId || null,
+                          employerName: watForm.employerName || null,
+                          jobTitle: watForm.jobTitle || null,
+                          employerState: watForm.employerState || null,
+                          currentStage: watForm.currentStage,
+                          passportDeadline: watForm.passportDeadline
+                            ? new Date(watForm.passportDeadline)
+                            : null,
+                          visaDeadline: watForm.visaDeadline
+                            ? new Date(watForm.visaDeadline)
+                            : null,
+                          visaApproved: watForm.visaApproved,
+                        });
+                        if (res.success) {
+                          setWatSavedMsg("WAT ve Vize bilgileri kaydedildi!");
+                          setTimeout(() => setWatSavedMsg(null), 3000);
+                        }
+                      });
+                    }}
+                    className="rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a]"
+                  >
+                    İş &amp; Vize Bilgilerini Kaydet
+                  </button>
+                </div>
+              </div>
+
+              {/* Direct Job Assignment from WAT Job Pool */}
+              <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 space-y-3 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-bold text-[#1e3a8a] flex items-center gap-1.5">
+                      <Link2 className="h-4 w-4" />
+                      İş Havuzundan Bu Öğrenciye Özel İş Teklifi Ata
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Seçtiğiniz iş öğrencinin portalına düşer; öğrenci onayladığında işveren ve aşama otomatik güncellenir.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={selectedJobPoolId}
+                      onChange={(e) => setSelectedJobPoolId(e.target.value)}
+                      className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
+                    >
+                      {availableWatJobs.map((j) => (
+                        <option key={j.id} value={j.id}>
+                          [{j.sponsor}] {j.jobTitle} ({j.location}) — ${j.hourlyWage}/saat
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={isPending || !selectedJobPoolId}
+                      onClick={() => {
+                        startTransition(async () => {
+                          const res = await createStudentJobLink(
+                            selectedJobPoolId,
+                            student.id,
+                          );
+                          if (res.success) {
+                            setWatSavedMsg(
+                              "İş teklifi öğrenci portalına tanımlandı ve bildirim gönderildi!",
+                            );
+                          }
+                        });
+                      }}
+                      className="rounded-xl bg-[#1e3a8a] px-4 py-2 text-xs font-bold text-white hover:bg-blue-800"
+                    >
+                      Öğrenciye İş Teklifi Gönder
                     </button>
                   </div>
                 </div>
@@ -1191,22 +1512,157 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
       {/* ── 4. PAYMENTS TAB ──────────────────────────────────────────────── */}
       {activeTab === "payments" && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-bold text-slate-900">
                 Ödeme Planı ve Taksit Takibi
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Öğrencinin sözleşme bedeli, taksitleri ve muhasebe hareketleri
+                Öğrencinin yüklediği havale dekontları, elden ödeme bildirimleri ve taksit onayları
               </p>
             </div>
-            <Link
-              href="/accounting"
-              className="rounded-xl bg-[#0f172a] px-3.5 py-2 text-xs font-bold text-white"
-            >
-              Muhasebe Modülüne Git →
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowNewPaymentForm((v) => !v)}
+                className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Yeni Ödeme / Taksit Planı Ekle
+              </button>
+              <Link
+                href="/accounting"
+                className="rounded-xl bg-[#0f172a] px-3.5 py-2 text-xs font-bold text-white"
+              >
+                Muhasebe Modülüne Git →
+              </Link>
+            </div>
           </div>
+
+          {showNewPaymentForm && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 space-y-3 text-xs">
+              <h4 className="font-bold text-[#1e3a8a]">
+                Öğrenci İçin Yeni Ödeme &amp; Taksit Planı Oluştur
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block font-semibold text-slate-700">
+                    Açıklama
+                  </label>
+                  <input
+                    type="text"
+                    value={newPaymentForm.description}
+                    onChange={(e) =>
+                      setNewPaymentForm({
+                        ...newPaymentForm,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-semibold text-slate-700">
+                    Toplam Tutar
+                  </label>
+                  <input
+                    type="number"
+                    value={newPaymentForm.totalAmount}
+                    onChange={(e) =>
+                      setNewPaymentForm({
+                        ...newPaymentForm,
+                        totalAmount: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-semibold text-slate-700">
+                    Döviz &amp; Taksit Sayısı
+                  </label>
+                  <div className="flex gap-1.5">
+                    <select
+                      value={newPaymentForm.currency}
+                      onChange={(e) =>
+                        setNewPaymentForm({
+                          ...newPaymentForm,
+                          currency: e.target.value as any,
+                        })
+                      }
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-bold"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="TRY">TRY</option>
+                    </select>
+                    <input
+                      type="number"
+                      min={1}
+                      max={12}
+                      value={newPaymentForm.installmentCount}
+                      onChange={(e) =>
+                        setNewPaymentForm({
+                          ...newPaymentForm,
+                          installmentCount: Number(e.target.value),
+                        })
+                      }
+                      className="w-16 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center font-bold"
+                      title="Taksit Sayısı"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block font-semibold text-slate-700">
+                    İlk Taksit Vadesi
+                  </label>
+                  <input
+                    type="date"
+                    value={newPaymentForm.firstDueDate}
+                    onChange={(e) =>
+                      setNewPaymentForm({
+                        ...newPaymentForm,
+                        firstDueDate: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewPaymentForm(false)}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-600"
+                >
+                  İptal
+                </button>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    startTransition(async () => {
+                      const res = await createStudentPaymentPlan({
+                        studentId: student.id,
+                        description: newPaymentForm.description,
+                        totalAmount: Number(newPaymentForm.totalAmount),
+                        currency: newPaymentForm.currency,
+                        installmentCount: newPaymentForm.installmentCount,
+                        firstDueDate: newPaymentForm.firstDueDate,
+                      });
+                      if (res.success) {
+                        setShowNewPaymentForm(false);
+                      }
+                    });
+                  }}
+                  className="rounded-lg bg-[#0f172a] px-4 py-1.5 font-bold text-white hover:bg-[#1e3a8a]"
+                >
+                  Ödeme Planını Oluştur
+                </button>
+              </div>
+            </div>
+          )}
 
           {payments && payments.length > 0 ? (
             payments.map((payment: any) => (
@@ -1244,6 +1700,9 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
                           Tutar
                         </th>
                         <th className="px-4 py-3 font-semibold text-slate-500">
+                          Yöntem / Dekont
+                        </th>
+                        <th className="px-4 py-3 font-semibold text-slate-500">
                           Durum
                         </th>
                         <th className="px-4 py-3 text-right font-semibold text-slate-500">
@@ -1264,12 +1723,39 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
                             {String(inst.amount)} {inst.currency}
                           </td>
                           <td className="px-4 py-3">
+                            {inst.receiptUrl ? (
+                              <div className="flex items-center gap-2">
+                                <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#1e3a8a]">
+                                  {inst.paymentMethod === "CASH_ELDEN"
+                                    ? "Elden Ödeme Bildirimi"
+                                    : "Havale Dekontu"}
+                                </span>
+                                {inst.receiptUrl !== "ELDEN_BILDIRIM" && (
+                                  <a
+                                    href={inst.receiptUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="font-bold text-blue-600 hover:underline"
+                                  >
+                                    Dekontu Aç →
+                                  </a>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
                             {inst.isPaid ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                                 <CheckCircle2 className="h-3 w-3" /> Ödendi
                               </span>
+                            ) : inst.receiptUrl ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                                <Clock className="h-3 w-3" /> Dekont Onayı Bekliyor
+                              </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                                 <Clock className="h-3 w-3" /> Bekliyor
                               </span>
                             )}
@@ -1287,7 +1773,9 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
                                   : "bg-emerald-600 text-white hover:bg-emerald-700",
                               )}
                             >
-                              {inst.isPaid ? "Ödenmedi Yap" : "Ödendi İşaretle"}
+                              {inst.isPaid
+                                ? "Ödenmedi Yap"
+                                : "Tahsilatı Onayla (Ödendi)"}
                             </button>
                           </td>
                         </tr>
@@ -1299,7 +1787,7 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
             ))
           ) : (
             <p className="text-xs text-slate-400 text-center py-6">
-              Kayıtlı ödeme planı bulunamadı.
+              Kayıtlı ödeme planı bulunamadı. Sağ üstteki butondan yeni taksit planı ekleyebilirsiniz.
             </p>
           )}
         </div>
@@ -1307,42 +1795,164 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
 
       {/* ── 5. DOCUMENTS TAB ─────────────────────────────────────────────── */}
       {activeTab === "documents" && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-slate-900">
-            Yüklenen Evraklar ve Belgeler
-          </h3>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Yüklenen Evraklar, Onay &amp; Danışman Belge Yükleme
+              </h3>
+              <p className="text-xs text-slate-500">
+                Öğrencinin yüklediği belgeleri onaylayabilir veya DS-2019, Job Offer, Sözleşme gibi belgeleri doğrudan yükleyebilirsiniz.
+              </p>
+            </div>
+          </div>
+
+          {/* Advisor Direct Document Upload Bar */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="font-bold text-slate-700">
+                Öğrenci Dosyasına Belge Ekle:
+              </span>
+              <select
+                value={advisorDocType}
+                onChange={(e) => setAdvisorDocType(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold"
+              >
+                {Object.entries(DOCUMENT_TYPE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="file"
+                onChange={(e) => setAdvisorDocFile(e.target.files?.[0] || null)}
+                className="rounded-lg border border-slate-200 bg-white p-1 text-xs"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={!advisorDocFile || isUploadingAdvisorDoc}
+              onClick={async () => {
+                if (!advisorDocFile) return;
+                setIsUploadingAdvisorDoc(true);
+                try {
+                  const fd = new FormData();
+                  fd.append("file", advisorDocFile);
+                  fd.append("studentId", student.id);
+                  fd.append("docType", advisorDocType);
+                  const upRes = await fetch("/api/upload", {
+                    method: "POST",
+                    body: fd,
+                  });
+                  const upJson = await upRes.json();
+                  if (upJson.success) {
+                    await uploadDocumentByAdvisor({
+                      studentId: student.id,
+                      type: advisorDocType,
+                      fileName: advisorDocFile.name,
+                      fileUrl: upJson.fileUrl,
+                    });
+                    setAdvisorDocFile(null);
+                  }
+                } finally {
+                  setIsUploadingAdvisorDoc(false);
+                }
+              }}
+              className="rounded-xl bg-[#0f172a] px-4 py-2 font-bold text-white hover:bg-[#1e3a8a] disabled:opacity-50"
+            >
+              {isUploadingAdvisorDoc
+                ? "Yükleniyor…"
+                : "Belgeyi Yükle & Onayla"}
+            </button>
+          </div>
+
           {documents && documents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {documents.map((doc: any) => (
                 <div
                   key={doc.id}
-                  className="flex items-center justify-between rounded-xl border border-slate-200 p-4"
+                  className="flex flex-col justify-between gap-3 rounded-xl border border-slate-200 p-4"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                      <FileText className="h-5 w-5" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">
+                          {DOCUMENT_TYPE_LABELS[
+                            doc.type as keyof typeof DOCUMENT_TYPE_LABELS
+                          ] || doc.type}
+                        </p>
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] font-semibold text-blue-600 hover:underline truncate max-w-[220px] block"
+                        >
+                          {doc.fileName} (Dosyayı Aç →)
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">
-                        {DOCUMENT_TYPE_LABELS[
-                          doc.type as keyof typeof DOCUMENT_TYPE_LABELS
-                        ] || doc.type}
-                      </p>
-                      <p className="text-[11px] text-slate-400 truncate max-w-[200px]">
-                        {doc.fileName}
-                      </p>
-                    </div>
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-[10px] font-bold",
+                        doc.verificationStatus === "APPROVED"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : doc.verificationStatus === "PENDING"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-rose-100 text-rose-800",
+                      )}
+                    >
+                      {doc.verificationStatus === "APPROVED"
+                        ? "Onaylandı"
+                        : doc.verificationStatus === "PENDING"
+                        ? "Onay Bekliyor"
+                        : "Revize İstendi"}
+                    </span>
                   </div>
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-0.5 text-xs font-bold",
-                      doc.verificationStatus === "APPROVED"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800",
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    {doc.verificationStatus !== "APPROVED" && (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() =>
+                          startTransition(() => {
+                            reviewStudentDocument(doc.id, "APPROVED");
+                          })
+                        }
+                        className="rounded-lg bg-emerald-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-emerald-700"
+                      >
+                        ✓ Onayla
+                      </button>
                     )}
-                  >
-                    {doc.verificationStatus}
-                  </span>
+                    {doc.verificationStatus !== "REVISION_REQUESTED" && (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          const reason = prompt(
+                            "Revize / Red sebebini yazınız:",
+                            "Belge okunaklı değil, lütfen yeniden yükleyin.",
+                          );
+                          if (reason) {
+                            startTransition(() => {
+                              reviewStudentDocument(
+                                doc.id,
+                                "REVISION_REQUESTED",
+                                reason,
+                              );
+                            });
+                          }
+                        }}
+                        className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100"
+                      >
+                        ✕ Revize İste
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

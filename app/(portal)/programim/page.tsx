@@ -1,20 +1,23 @@
 // app/(portal)/programim/page.tsx
+import Link from "next/link";
 import { requireStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import {
-  ProgramStepperWizard,
-  type ProgramStepItem,
-} from "@/components/portal/dashboard/ProgramStepperWizard";
+import { ProgramStepperWizard } from "@/components/portal/dashboard/ProgramStepperWizard";
 import { Ds160FormSection } from "@/components/portal/dashboard/Ds160FormSection";
+import { InteractiveDocumentGrid } from "@/components/portal/documents/InteractiveDocumentGrid";
 import {
-  CheckCircle2,
-  XCircle,
+  PROGRAM_REQUIRED_DOCS,
+  buildProgramSteps,
+} from "@/lib/portal/programConfig";
+import {
   Clock,
   AlertTriangle,
   Briefcase,
   CreditCard,
+  Link2,
+  GraduationCap,
 } from "lucide-react";
-import type { DocumentType, Program } from "@prisma/client";
+import type { Program } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +32,7 @@ const PROGRAM_META: Record<
     border: "border-blue-200",
   },
   ACADEMY: {
-    label: "Akademi (Üniversite)",
+    label: "Akademi (Üniversite & Yüksek Lisans)",
     color: "text-purple-700",
     bg: "bg-purple-50",
     border: "border-purple-200",
@@ -54,53 +57,6 @@ const PROGRAM_META: Record<
   },
 };
 
-function calculateWat8Steps(watDetail: any, hasPaid: boolean): ProgramStepItem[] {
-  const stageOrder = [
-    "PRE_REGISTRATION",
-    "JOB_SELECTION",
-    "JOB_PLACEMENT",
-    "PAYMENT_COMPLETED",
-    "VISA_APPOINTMENT",
-    "VISA_APPROVED",
-    "ORIENTATION",
-    "DEPARTURE",
-  ];
-  const currentStage = watDetail?.currentStage || "JOB_PLACEMENT";
-  const currentIdx = Math.max(0, stageOrder.indexOf(currentStage));
-
-  const labels = [
-    { label: "Ön Kayıt", desc: "Sözleşme ve ön kayıt tamamlandı" },
-    { label: "İş Seçimi", desc: "İş havuzu ve mülakat tercihi" },
-    { label: "İş Yerleşimi", desc: "Job Offer ve DS-2019 süreci" },
-    { label: "Ücret Tamamlandı", desc: "Program ödemesi kapandı" },
-    { label: "Vize Randevusu", desc: "DS-160 ve konsolosluk randevusu" },
-    { label: "Vize Onayı", desc: "J-1 vizesi basıldı" },
-    { label: "Oryantasyon", desc: "Uçuş öncesi eğitim semineri" },
-    { label: "Amerika'ya Gidiş", desc: "Uçuş ve programa başlangıç" },
-  ];
-
-  return labels.map((item, idx) => ({
-    id: idx + 1,
-    label: item.label,
-    description: item.desc,
-    isCompleted: idx < currentIdx || (idx === 3 && hasPaid),
-    isCurrent: idx === currentIdx,
-  }));
-}
-
-const REQUIRED_10_DOCS: { type: DocumentType; label: string }[] = [
-  { type: "DS_2019", label: "DS-2019 Formu" },
-  { type: "CV", label: "İngilizce CV" },
-  { type: "CRIMINAL_RECORD", label: "Adli Sicil Kaydı" },
-  { type: "CONTRACT", label: "Sözleşme" },
-  { type: "SEVIS_RECEIPT", label: "SEVIS Makbuzu" },
-  { type: "HEALTH_INSURANCE", label: "Sağlık Sigortası" },
-  { type: "PASSPORT", label: "Pasaport" },
-  { type: "JOB_OFFER", label: "Job Offer" },
-  { type: "TRANSCRIPT", label: "Transkript" },
-  { type: "STUDENT_CERTIFICATE", label: "Öğrenci Belgesi" },
-];
-
 function InfoRow({
   label,
   value,
@@ -108,12 +64,11 @@ function InfoRow({
   label: string;
   value: string | null | undefined;
 }) {
-  if (!value) return null;
   return (
-    <div className="flex items-start justify-between py-2 border-b border-slate-50 last:border-0">
+    <div className="flex items-start justify-between py-2 border-b border-slate-100 last:border-0">
       <span className="text-xs font-semibold text-slate-500">{label}</span>
-      <span className="text-xs font-medium text-slate-900 text-right max-w-[60%]">
-        {value}
+      <span className="text-xs font-semibold text-slate-900 text-right max-w-[60%]">
+        {value || "Danışman tarafından atanacak"}
       </span>
     </div>
   );
@@ -122,19 +77,29 @@ function InfoRow({
 export default async function ProgramimPage() {
   const user = await requireStudent();
 
-  const student = (await prisma.student.findUnique({
+  const student = await prisma.student.findUnique({
     where: { userId: user.id },
     include: {
       watDetail: true,
       academyDetail: true,
       languageDetail: true,
+      summerCampDetail: true,
+      visaDetail: true,
+      academicApplications: {
+        orderBy: { priority: "asc" },
+      },
+      watJobAssignments: {
+        include: { job: true },
+        orderBy: { createdAt: "desc" },
+      },
       payments: {
         include: { installments: { orderBy: { dueDate: "asc" } } },
       },
-      documents: true,
-      advisorNotes: { orderBy: { createdAt: "desc" }, take: 3 },
+      documents: {
+        orderBy: { createdAt: "desc" },
+      },
     },
-  })) as any;
+  });
 
   if (!student) {
     return (
@@ -145,31 +110,28 @@ export default async function ProgramimPage() {
     );
   }
 
-  const meta = PROGRAM_META[student.program as Program];
-  const allInstallments: any[] = (student.payments as any[]).flatMap(
-    (p: any) => p.installments,
-  );
+  const program = student.program as Program;
+  const meta = PROGRAM_META[program];
+  const requiredDocs = PROGRAM_REQUIRED_DOCS[program] || [];
+  const steps = buildProgramSteps(student);
+
+  const allInstallments = student.payments.flatMap((p) => p.installments);
   const totalAmount = allInstallments.reduce(
-    (sum: number, i: any) => sum + Number(i.amount),
+    (sum, i) => sum + Number(i.amount),
     0,
   );
   const paidAmount = allInstallments
-    .filter((i: any) => i.isPaid)
-    .reduce((sum: number, i: any) => sum + Number(i.amount), 0);
+    .filter((i) => i.isPaid)
+    .reduce((sum, i) => sum + Number(i.amount), 0);
   const remainingAmount = totalAmount - paidAmount;
-  const nextUnpaid = allInstallments.find((i: any) => !i.isPaid);
-
-  const steps = calculateWat8Steps(student.watDetail, remainingAmount <= 0);
-  const uploadedTypes = new Set(
-    (student.documents as any[]).map((d: any) => d.type),
-  );
+  const nextUnpaid = allInstallments.find((i) => !i.isPaid);
 
   return (
     <div className="space-y-6">
       {/* Program Header */}
       <div className={`rounded-2xl border ${meta.border} ${meta.bg} p-6`}>
         <p className={`text-xs font-bold uppercase tracking-wider ${meta.color}`}>
-          Advice Aktif Programınız
+          Aktif Programınız
         </p>
         <h1 className="text-2xl font-bold text-[#0f172a]">{meta.label}</h1>
         <p className="text-xs text-slate-500 mt-0.5">
@@ -180,125 +142,219 @@ export default async function ProgramimPage() {
         </p>
       </div>
 
-      {/* 8-Stage Progress Stepper */}
-      <ProgramStepperWizard program={student.program} steps={steps} />
+      {/* Program-Specific Stepper */}
+      <ProgramStepperWizard program={program} steps={steps} />
 
-      {/* 10-Box Green/Red Document Checklist */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-base font-bold text-[#0f172a]">
-          10 Zorunlu Belge Durumu (Yeşil = Tamamlandı / Kırmızı = Eksik)
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {REQUIRED_10_DOCS.map((item) => {
-            const exists = uploadedTypes.has(item.type);
-            return (
-              <div
-                key={item.type}
-                className={`rounded-xl border p-3 flex items-center justify-between ${
-                  exists
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-950"
-                    : "border-red-300 bg-red-50 text-red-950"
-                }`}
-              >
-                <span className="text-xs font-bold">{item.label}</span>
-                {exists ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                ) : (
-                  <XCircle className="h-4 w-4 text-red-500 shrink-0" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Interactive Document Grid */}
+      <InteractiveDocumentGrid
+        studentId={student.id}
+        requiredDocs={requiredDocs}
+        uploadedDocs={student.documents.map((d) => ({
+          id: d.id,
+          type: d.type,
+          fileName: d.fileName,
+          fileUrl: d.fileUrl,
+          verificationStatus: d.verificationStatus,
+          rejectionReason: d.rejectionReason,
+        }))}
+      />
 
-      {/* DS-160 Form */}
-      {student.program === "WORK_AND_TRAVEL" && (
+      {/* DS-160 Form for WAT */}
+      {program === "WORK_AND_TRAVEL" && (
         <Ds160FormSection
           studentId={student.id}
           initialStatus={student.watDetail?.ds160Status}
           initialConfirmationNo={student.watDetail?.ds160ConfirmationNo}
-          initialData={student.watDetail?.ds160Data || null}
+          initialData={
+            (student.watDetail?.ds160Data as Record<string, any> | null) || null
+          }
         />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* WAT details */}
-        {student.program === "WORK_AND_TRAVEL" && student.watDetail && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-blue-600" />
-              İş Yerleştirme &amp; Vize Bilgileri
-            </h2>
-            <InfoRow
-              label="Sponsor Kuruluş"
-              value={student.watDetail.sponsorName}
-            />
-            <InfoRow
-              label="DS-2019 No"
-              value={student.watDetail.sponsorDsNumber}
-            />
-            <InfoRow label="SEVIS ID" value={student.watDetail.sevisId} />
-            <InfoRow label="İş Pozisyonu" value={student.watDetail.jobTitle} />
-            <InfoRow label="İşveren" value={student.watDetail.employerName} />
-            <InfoRow
-              label="ABD Eyaleti"
-              value={student.watDetail.employerState}
-            />
-            <InfoRow
-              label="Vize Durumu"
-              value={
-                student.watDetail.visaApproved ? "✅ Onaylandı" : "⏳ Bekleniyor"
-              }
-            />
+        {/* WAT Placement & Assigned Job Offers */}
+        {program === "WORK_AND_TRAVEL" && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-blue-600" />
+                İş Yerleştirme &amp; Vize Bilgileri
+              </h2>
+            </div>
+
+            {student.watJobAssignments.length > 0 && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 space-y-2">
+                <p className="text-xs font-bold text-[#1e3a8a]">
+                  Danışmanınız Tarafından Size Atanan İş Teklifi:
+                </p>
+                {student.watJobAssignments.map((asg) => (
+                  <div
+                    key={asg.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white p-2.5 border border-blue-100 text-xs"
+                  >
+                    <div>
+                      <span className="font-bold text-slate-900 block">
+                        {asg.job.jobTitle} ({asg.job.location})
+                      </span>
+                      <span className="text-slate-500">
+                        ${String(asg.job.hourlyWage)}/saat · Durum:{" "}
+                        <strong>
+                          {asg.status === "ACCEPTED"
+                            ? "Onaylandı"
+                            : asg.status === "DECLINED"
+                            ? "Reddedildi"
+                            : "Yanıtınızı Bekliyor"}
+                        </strong>
+                      </span>
+                    </div>
+                    <Link
+                      href={`/job-offer/${asg.shareToken}`}
+                      className="inline-flex items-center gap-1 rounded-lg bg-[#0f172a] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#1e3a8a]"
+                    >
+                      <Link2 className="h-3 w-3 text-sky-400" />
+                      <span>
+                        {asg.status === "SENT" ? "İncele & Onayla" : "Teklifi Gör"}
+                      </span>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div>
+              <InfoRow
+                label="Sponsor Kuruluş"
+                value={student.watDetail?.sponsorName}
+              />
+              <InfoRow
+                label="İşveren (Employer)"
+                value={student.watDetail?.employerName}
+              />
+              <InfoRow
+                label="İş Pozisyonu"
+                value={student.watDetail?.jobTitle}
+              />
+              <InfoRow
+                label="ABD Eyaleti / Şehir"
+                value={student.watDetail?.employerState}
+              />
+              <InfoRow
+                label="DS-2019 Numarası"
+                value={student.watDetail?.sponsorDsNumber}
+              />
+              <InfoRow label="SEVIS ID" value={student.watDetail?.sevisId} />
+              <InfoRow
+                label="Vize Durumu"
+                value={
+                  student.watDetail?.visaApproved
+                    ? "Onaylandı"
+                    : "Süreç Devam Ediyor"
+                }
+              />
+            </div>
           </div>
         )}
 
-        {/* Payment summary */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-blue-600" />
-            Ödeme Özeti
-          </h2>
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-slate-50 p-3 text-center">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase">
-                  Toplam
-                </p>
-                <p className="text-base font-bold text-slate-900">
-                  {totalAmount.toLocaleString("tr-TR")}
-                </p>
-              </div>
-              <div className="rounded-xl bg-emerald-50 p-3 text-center">
-                <p className="text-[10px] font-semibold text-emerald-600 uppercase">
-                  Ödenen
-                </p>
-                <p className="text-base font-bold text-emerald-700">
-                  {paidAmount.toLocaleString("tr-TR")}
-                </p>
-              </div>
-              <div className="rounded-xl bg-amber-50 p-3 text-center">
-                <p className="text-[10px] font-semibold text-amber-600 uppercase">
-                  Kalan
-                </p>
-                <p className="text-base font-bold text-amber-700">
-                  {remainingAmount.toLocaleString("tr-TR")}
-                </p>
-              </div>
-            </div>
-            {nextUnpaid && (
-              <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
-                <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-                <span className="text-amber-800">
-                  Sonraki taksit:{" "}
-                  <strong>
-                    {Number(nextUnpaid.amount).toLocaleString("tr-TR")}{" "}
-                    {nextUnpaid.currency}
-                  </strong>
-                </span>
+        {/* Academy University Applications */}
+        {program === "ACADEMY" && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-purple-600" />
+              Üniversite &amp; Program Başvurularınız
+            </h2>
+            {student.academicApplications.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                Danışmanınız tarafından üniversite başvuru tercihleriniz sisteme eklenmektedir.
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {student.academicApplications.map((app) => (
+                  <div
+                    key={app.id}
+                    className="rounded-xl border border-slate-200 p-3.5 text-xs space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">
+                        {app.institutionName} ({app.country})
+                      </span>
+                      <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[10px] font-bold text-purple-700">
+                        {app.status}
+                      </span>
+                    </div>
+                    <p className="text-slate-600">
+                      {app.courseName} · {app.degree} · Dönem: {app.intake}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Payment Summary */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between space-y-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-blue-600" />
+              Ödeme &amp; Taksit Özeti
+            </h2>
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase">
+                    Toplam
+                  </p>
+                  <p className="text-base font-bold text-slate-900">
+                    {totalAmount.toLocaleString("tr-TR")}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-emerald-50 p-3 text-center">
+                  <p className="text-[10px] font-semibold text-emerald-600 uppercase">
+                    Ödenen
+                  </p>
+                  <p className="text-base font-bold text-emerald-700">
+                    {paidAmount.toLocaleString("tr-TR")}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-3 text-center">
+                  <p className="text-[10px] font-semibold text-amber-600 uppercase">
+                    Kalan
+                  </p>
+                  <p className="text-base font-bold text-amber-700">
+                    {remainingAmount.toLocaleString("tr-TR")}
+                  </p>
+                </div>
+              </div>
+              {nextUnpaid && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-amber-800">
+                      Sıradaki taksit:{" "}
+                      <strong>
+                        {Number(nextUnpaid.amount).toLocaleString("tr-TR")}{" "}
+                        {nextUnpaid.currency}
+                      </strong>
+                    </span>
+                  </div>
+                  <Link
+                    href="/odemelerim"
+                    className="font-bold text-[#1e3a8a] hover:underline"
+                  >
+                    Dekont Yükle →
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 flex justify-end">
+            <Link
+              href="/odemelerim"
+              className="rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a]"
+            >
+              Tüm Taksitler &amp; Dekont Yükleme →
+            </Link>
           </div>
         </div>
       </div>

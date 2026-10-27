@@ -2,66 +2,20 @@
 import Link from "next/link";
 import { requireStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import {
-  ProgramStepperWizard,
-  type ProgramStepItem,
-} from "@/components/portal/dashboard/ProgramStepperWizard";
+import { ProgramStepperWizard } from "@/components/portal/dashboard/ProgramStepperWizard";
 import { AdvisorCard } from "@/components/portal/dashboard/AdvisorCard";
 import { ActionBanners } from "@/components/portal/dashboard/ActionBanners";
 import { Ds160FormSection } from "@/components/portal/dashboard/Ds160FormSection";
-import { Plane, CheckCircle2, XCircle, Link2 } from "lucide-react";
-import type { DocumentType } from "@prisma/client";
+import { InteractiveDocumentGrid } from "@/components/portal/documents/InteractiveDocumentGrid";
+import {
+  PROGRAM_REQUIRED_DOCS,
+  buildProgramSteps,
+} from "@/lib/portal/programConfig";
+import { PROGRAM_LABELS } from "@/types/crm";
+import { Briefcase, GraduationCap, Link2, CheckCircle2, Clock } from "lucide-react";
+import type { Program } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-
-// 8-Stage WAT Progress Bar (§3)
-function calculateWat8Steps(watDetail: any, hasPaid: boolean): ProgramStepItem[] {
-  const stageOrder = [
-    "PRE_REGISTRATION",
-    "JOB_SELECTION",
-    "JOB_PLACEMENT",
-    "PAYMENT_COMPLETED",
-    "VISA_APPOINTMENT",
-    "VISA_APPROVED",
-    "ORIENTATION",
-    "DEPARTURE",
-  ];
-  const currentStage = watDetail?.currentStage || "JOB_PLACEMENT";
-  const currentIdx = Math.max(0, stageOrder.indexOf(currentStage));
-
-  const labels = [
-    { label: "Ön Kayıt", desc: "Sözleşme ve ön kayıt tamamlandı" },
-    { label: "İş Seçimi", desc: "İş havuzu ve mülakat tercihi" },
-    { label: "İş Yerleşimi", desc: "Job Offer ve DS-2019 süreci" },
-    { label: "Ücret Tamamlandı", desc: "Program ödemesi kapandı" },
-    { label: "Vize Randevusu", desc: "DS-160 ve konsolosluk randevusu" },
-    { label: "Vize Onayı", desc: "J-1 vizesi basıldı" },
-    { label: "Oryantasyon", desc: "Uçuş öncesi eğitim semineri" },
-    { label: "Amerika'ya Gidiş", desc: "Uçuş ve programa başlangıç" },
-  ];
-
-  return labels.map((item, idx) => ({
-    id: idx + 1,
-    label: item.label,
-    description: item.desc,
-    isCompleted: idx < currentIdx || (idx === 3 && hasPaid),
-    isCurrent: idx === currentIdx,
-  }));
-}
-
-// 10-Box Green/Red Document Checklist (§3)
-const REQUIRED_10_DOCS: { type: DocumentType; label: string }[] = [
-  { type: "DS_2019", label: "DS-2019 Formu" },
-  { type: "CV", label: "İngilizce CV" },
-  { type: "CRIMINAL_RECORD", label: "Adli Sicil Kaydı" },
-  { type: "CONTRACT", label: "Sözleşme" },
-  { type: "SEVIS_RECEIPT", label: "SEVIS Makbuzu" },
-  { type: "HEALTH_INSURANCE", label: "Sağlık Sigortası" },
-  { type: "PASSPORT", label: "Pasaport" },
-  { type: "JOB_OFFER", label: "Job Offer" },
-  { type: "TRANSCRIPT", label: "Transkript" },
-  { type: "STUDENT_CERTIFICATE", label: "Öğrenci Belgesi" },
-];
 
 export default async function StudentHomePage() {
   const user = await requireStudent();
@@ -74,7 +28,12 @@ export default async function StudentHomePage() {
       languageDetail: true,
       summerCampDetail: true,
       visaDetail: true,
-      documents: true,
+      academicApplications: {
+        orderBy: { priority: "asc" },
+      },
+      documents: {
+        orderBy: { createdAt: "desc" },
+      },
       watJobAssignments: {
         include: { job: true },
         orderBy: { createdAt: "desc" },
@@ -82,9 +41,7 @@ export default async function StudentHomePage() {
       payments: {
         include: {
           installments: {
-            where: { isPaid: false },
             orderBy: { dueDate: "asc" },
-            take: 1,
           },
         },
       },
@@ -101,7 +58,7 @@ export default async function StudentHomePage() {
   if (!student) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-700">
-        Öğrenci kaydınız bulunamadı. Lütfen kurum yetkilinizle iletişime geçiniz.
+        Öğrenci kaydınız bulunamadı. Lütfen danışmanınızla iletişime geçiniz.
       </div>
     );
   }
@@ -118,15 +75,32 @@ export default async function StudentHomePage() {
       })
     : null;
 
-  const hasPaidAll = student.payments.every((p) => p.status === "PAID");
-  const steps = calculateWat8Steps(student.watDetail, hasPaidAll);
+  const program = student.program as Program;
+  const requiredDocs = PROGRAM_REQUIRED_DOCS[program] || [];
+  const steps = buildProgramSteps(student);
+  const currentStepObj = steps.find((s) => s.isCurrent) || steps[0];
 
-  const uploadedTypes = new Set(student.documents.map((d) => d.type));
-  const missingDocsCount = REQUIRED_10_DOCS.filter(
-    (d) => !uploadedTypes.has(d.type),
+  const docByType = new Map<string, any>();
+  for (const d of student.documents) {
+    if (!docByType.has(d.type)) {
+      docByType.set(d.type, d);
+    }
+  }
+
+  const approvedCount = requiredDocs.filter(
+    (r) => docByType.get(r.type)?.verificationStatus === "APPROVED",
+  ).length;
+  const pendingCount = requiredDocs.filter(
+    (r) => docByType.get(r.type)?.verificationStatus === "PENDING",
+  ).length;
+  const missingDocsCount = requiredDocs.filter(
+    (r) => !docByType.has(r.type),
   ).length;
 
-  const firstUnpaidInstallment = student.payments[0]?.installments[0];
+  const unpaidInstallments = student.payments
+    .flatMap((p) => p.installments)
+    .filter((i) => !i.isPaid);
+  const firstUnpaidInstallment = unpaidInstallments[0];
   const upcomingPayment = firstUnpaidInstallment
     ? {
         amount: firstUnpaidInstallment.amount.toString(),
@@ -137,53 +111,55 @@ export default async function StudentHomePage() {
 
   return (
     <div className="space-y-6">
-      {/* ── ADVICE BOARDING PASS HERO HEADER (§3) ───────────────────────── */}
-      <div className="overflow-hidden rounded-3xl bg-[#0f172a] text-white shadow-xl border border-slate-800">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 px-6 py-3.5 bg-slate-900/90">
-          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-sky-400 font-bold">
-            <Plane className="h-4 w-4" />
-            <span>ADVICE BOARDING PASS · PASSENGER PORTAL</span>
-          </div>
-          <div className="flex items-center gap-3 text-xs font-mono text-slate-300">
-            <span>PNR: BPX-{student.id.slice(0, 6).toUpperCase()}</span>
-            <span>·</span>
-            <span className="text-emerald-400 font-bold">STATUS: ACTIVE</span>
-          </div>
-        </div>
-
-        <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-          <div className="md:col-span-2">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
-              YOLCU / ÖĞRENCİ ADI
-            </p>
-            <h1 className="text-2xl font-black tracking-tight text-white">
+      {/* Clean Student Portal Overview Header (No Boarding Pass Theme) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+          <div className="md:col-span-2 space-y-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-0.5 text-xs font-bold text-[#1e3a8a]">
+              <GraduationCap className="h-3.5 w-3.5" />
+              {PROGRAM_LABELS[program] || program}
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a]">
               {user.fullName}
             </h1>
-            <p className="text-xs text-sky-300 mt-1">
-              Hedef İşveren:{" "}
-              <strong>
-                {student.watDetail?.employerName || "Wilderness Resort (WI)"}
-              </strong>{" "}
-              · Sponsor: {student.watDetail?.sponsorName || "AWA"}
+            <p className="text-xs text-slate-500">
+              Danışmanınız:{" "}
+              <strong className="text-slate-800">
+                {advisor?.fullName || "Atanıyor"}
+              </strong>
+              {student.watDetail?.employerName
+                ? ` · İşveren: ${student.watDetail.employerName}`
+                : ""}
             </p>
           </div>
 
-          <div className="rounded-2xl bg-slate-800/90 p-3.5 border border-slate-700">
-            <span className="text-[10px] font-mono uppercase text-slate-400 block">
-              ROTA &amp; VARIŞ
+          <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200/80">
+            <span className="text-[11px] font-semibold text-slate-500 block">
+              Güncel Aşamanız
             </span>
-            <span className="text-base font-black text-white">
-              IST ✈ {student.watDetail?.employerState || "JFK / USA"}
+            <span className="text-sm font-bold text-[#1e3a8a] block mt-0.5">
+              {currentStepObj?.id}. {currentStepObj?.label}
+            </span>
+            <span className="text-[11px] text-slate-500">
+              {currentStepObj?.description}
             </span>
           </div>
 
-          <div className="rounded-2xl bg-slate-800/90 p-3.5 border border-slate-700">
-            <span className="text-[10px] font-mono uppercase text-slate-400 block">
-              EVRAK TAMAMLANMA
+          <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200/80">
+            <span className="text-[11px] font-semibold text-slate-500 block">
+              Belge Durumu Özeti
             </span>
-            <span className="text-base font-black text-emerald-400">
-              {10 - missingDocsCount} / 10 Belge Hazır
-            </span>
+            <div className="flex items-center gap-3 mt-1 text-xs font-bold">
+              <span className="text-emerald-700 flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" /> {approvedCount} Onaylı
+              </span>
+              {pendingCount > 0 && (
+                <span className="text-amber-700 flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" /> {pendingCount} Bekleyen
+                </span>
+              )}
+              <span className="text-rose-600">{missingDocsCount} Eksik</span>
+            </div>
           </div>
         </div>
       </div>
@@ -195,89 +171,78 @@ export default async function StudentHomePage() {
         revisionRequestCount={student.pendingApprovals.length}
       />
 
-      {/* Assigned Job Offers Banner */}
+      {/* Assigned WAT Job Offers */}
       {student.watJobAssignments.length > 0 && (
-        <div className="rounded-2xl border-2 border-[#1e3a8a]/20 bg-blue-50/60 p-5 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#1e3a8a] block">
-              SİZE ÖZEL İŞ TEKLİFİ ATANDI
-            </span>
-            <h3 className="text-base font-black text-[#0f172a]">
-              {student.watJobAssignments[0].job.jobTitle} (
-              {student.watJobAssignments[0].job.location}) — $
-              {String(student.watJobAssignments[0].job.hourlyWage)}/saat
-            </h3>
-            <p className="text-xs text-slate-600">
-              Durum: <strong>{student.watJobAssignments[0].status}</strong>
-            </p>
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1e3a8a]">
+            <Briefcase className="h-4 w-4" />
+            <span>Size Atanan İş Teklifleri (Job Offer)</span>
           </div>
-          <Link
-            href={`/job-offer/${student.watJobAssignments[0].shareToken}`}
-            className="flex items-center gap-2 rounded-xl bg-[#0f172a] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#1e3a8a]"
-          >
-            <Link2 className="h-4 w-4 text-sky-400" />
-            İş Teklifini Aç &amp; Onayla / Reddet →
-          </Link>
+          <div className="space-y-2.5">
+            {student.watJobAssignments.map((asg) => (
+              <div
+                key={asg.id}
+                className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 border border-blue-100 shadow-2xs"
+              >
+                <div>
+                  <h3 className="text-sm font-bold text-[#0f172a]">
+                    {asg.job.jobTitle} ({asg.job.location}) — $
+                    {String(asg.job.hourlyWage)}/saat
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Sponsor: <strong>{asg.job.sponsor}</strong> · Pozisyon:{" "}
+                    {asg.job.position || asg.job.jobTitle} · Durum:{" "}
+                    <strong
+                      className={
+                        asg.status === "ACCEPTED"
+                          ? "text-emerald-700"
+                          : asg.status === "DECLINED"
+                          ? "text-rose-600"
+                          : "text-amber-700"
+                      }
+                    >
+                      {asg.status === "ACCEPTED"
+                        ? "Onayladınız (Yerleşim Yapıldı)"
+                        : asg.status === "DECLINED"
+                        ? "Reddettiniz"
+                        : "Onayınızı Bekliyor"}
+                    </strong>
+                  </p>
+                </div>
+                <Link
+                  href={`/job-offer/${asg.shareToken}`}
+                  className="flex items-center gap-2 rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a]"
+                >
+                  <Link2 className="h-3.5 w-3.5 text-sky-400" />
+                  {asg.status === "SENT"
+                    ? "İş Teklifini İncele & Onayla"
+                    : "İş Detaylarını Gör"}
+                </Link>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* 8-Stage WAT Stepper */}
-      <ProgramStepperWizard program={student.program} steps={steps} />
+      {/* Program-Specific Progress Stepper */}
+      <ProgramStepperWizard program={program} steps={steps} />
 
-      {/* ── 10-BOX GREEN / RED DOCUMENT STATUS GRID (§3) ─────────────────── */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-[#0f172a]">
-              Evrak Durum Tablosu (Yeşil = Yüklendi / Kırmızı = Eksik)
-            </h3>
-            <p className="text-xs text-slate-500">
-              Work and Travel dosyanız için zorunlu 10 temel belgenin anlık durumu
-            </p>
-          </div>
-          <Link
-            href="/belgelerim"
-            className="rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a]"
-          >
-            Eksik Belge Yükle →
-          </Link>
-        </div>
+      {/* Interactive Program-Specific Document Grid (Click to upload + 3-state legend) */}
+      <InteractiveDocumentGrid
+        studentId={student.id}
+        requiredDocs={requiredDocs}
+        uploadedDocs={student.documents.map((d) => ({
+          id: d.id,
+          type: d.type,
+          fileName: d.fileName,
+          fileUrl: d.fileUrl,
+          verificationStatus: d.verificationStatus,
+          rejectionReason: d.rejectionReason,
+        }))}
+      />
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {REQUIRED_10_DOCS.map((item) => {
-            const exists = uploadedTypes.has(item.type);
-            return (
-              <div
-                key={item.type}
-                className={`rounded-xl border p-3.5 flex items-center justify-between transition-all ${
-                  exists
-                    ? "border-emerald-300 bg-emerald-50/80 text-emerald-950"
-                    : "border-red-300 bg-red-50/80 text-red-950"
-                }`}
-              >
-                <div>
-                  <span className="text-xs font-bold block">{item.label}</span>
-                  <span
-                    className={`text-[10px] font-bold uppercase ${
-                      exists ? "text-emerald-700" : "text-red-600"
-                    }`}
-                  >
-                    {exists ? "Tamamlandı" : "Eksik Evrak"}
-                  </span>
-                </div>
-                {exists ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-500 shrink-0" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── DS-160 STUDENT WORKSHEET FORM (§3) ───────────────────────────── */}
-      {student.program === "WORK_AND_TRAVEL" && (
+      {/* DS-160 Student Worksheet Form (for WAT) */}
+      {program === "WORK_AND_TRAVEL" && (
         <Ds160FormSection
           studentId={student.id}
           initialStatus={student.watDetail?.ds160Status}
