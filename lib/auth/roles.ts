@@ -1,6 +1,6 @@
 // lib/auth/roles.ts
 // ─────────────────────────────────────────────────────────────────────────────
-// Role constants, type guards, and Turkish display labels for BackPax CRM.
+// Role constants, type guards, and Turkish display labels for Advice CRM.
 // Imported by both server and client code — no side effects, no imports.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Role } from "@prisma/client";

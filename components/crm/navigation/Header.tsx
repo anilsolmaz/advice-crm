@@ -141,7 +141,7 @@ export default function Header({
               <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-100 bg-[#0f172a] px-4 py-3 text-white">
                   <div>
-                    <p className="text-xs font-bold">BackPax Bildirim Merkezi</p>
+                    <p className="text-xs font-bold">Advice Bildirim Merkezi</p>
                     <p className="text-[10px] text-slate-300">
                       Follow-up, Deadline, @Mention &amp; Onaylar
                     </p>

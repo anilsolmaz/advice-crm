@@ -204,7 +204,7 @@ export function SummerBookingWizard({
                 className="h-4 w-4 rounded border-slate-300"
               />
               <span>
-                BackPax Yaz Okulu Grup Tahsis (Allocation) ve İptal/İade Şartlarını okudum, onaylıyorum.
+                Advice Yaz Okulu Grup Tahsis (Allocation) ve İptal/İade Şartlarını okudum, onaylıyorum.
               </span>
             </label>
           </div>

@@ -169,7 +169,7 @@ export default async function ProgramimPage() {
       {/* Program Header */}
       <div className={`rounded-2xl border ${meta.border} ${meta.bg} p-6`}>
         <p className={`text-xs font-bold uppercase tracking-wider ${meta.color}`}>
-          BackPax Aktif Programınız
+          Advice Aktif Programınız
         </p>
         <h1 className="text-2xl font-bold text-[#0f172a]">{meta.label}</h1>
         <p className="text-xs text-slate-500 mt-0.5">

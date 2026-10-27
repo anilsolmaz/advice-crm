@@ -81,8 +81,8 @@ export default function JobOfferClient({
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/backpax-logo.svg"
-                alt="BackPax"
+                src="/advice-logo.svg"
+                alt="Advice Yurtdışı Eğitim"
                 className="h-9 w-auto object-contain"
               />
               <span className="rounded-full bg-[#0f172a] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">

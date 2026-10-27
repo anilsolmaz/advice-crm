@@ -1,8 +1,0 @@
-<svg width="240" height="54" viewBox="0 0 240 54" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="46" height="46" x="4" y="4" rx="12" fill="#0F172A"/>
-  <path d="M16 17C16 14.7909 17.7909 13 20 13H34C36.2091 13 38 14.7909 38 17V37C38 39.2091 36.2091 41 34 41H20C17.7909 41 16 39.2091 16 37V17Z" stroke="#38BDF8" stroke-width="2.5"/>
-  <path d="M22 13V10C22 8.89543 22.8954 8 24 8H30C31.1046 8 32 8.89543 32 10V13" stroke="#F8FAFC" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M21 25L33 25M29 21L33 25L29 29" stroke="#F8FAFC" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="60" y="30" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="23" letter-spacing="-0.5" fill="#0F172A">BACK<tspan fill="#1E3A8A">PAX</tspan></text>
-  <text x="61" y="44" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="9" letter-spacing="2.5" fill="#64748B">GLOBAL EDUCATION &amp; TRAVEL</text>
-</svg>

@@ -43,7 +43,7 @@ export default async function SettingsPage() {
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded-lg bg-[#0f172a] px-2.5 py-0.5 text-xs font-bold text-sky-300 uppercase tracking-wide">
-              BackPax Yönetici Paneli
+              Advice Yönetici Paneli
             </span>
           </div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#0f172a]">

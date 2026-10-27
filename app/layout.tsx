@@ -3,12 +3,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BackPax CRM & Öğrenci Portalı",
-  description: "BackPax Global Education & Travel — Work and Travel, Akademi, Dil Okulları, Yaz Okulu ve Vize Danışmanlığı Yönetim Portalı",
+  title: "Advice Yurtdışı Eğitim | CRM & Öğrenci Portalı",
+  description: "Advice Yurtdışı Eğitim — Work and Travel, Akademi, Dil Okulları, Yaz Okulu ve Vize Danışmanlığı Yönetim Portalı",
   icons: {
-    icon: "/backpax-logo.svg",
-    shortcut: "/backpax-logo.svg",
-    apple: "/backpax-logo.svg",
+    icon: "/advice-logo.svg",
+    shortcut: "/advice-logo.svg",
+    apple: "/advice-logo.svg",
   },
 };
 

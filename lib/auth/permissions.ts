@@ -1,5 +1,5 @@
 // lib/auth/permissions.ts
-// Granular permission and program access control helpers for BackPax CRM
+// Granular permission and program access control helpers for Advice CRM
 import type { Program } from "@prisma/client";
 import type { AuthUser } from "@/lib/auth/session";
 

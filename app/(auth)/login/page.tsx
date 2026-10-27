@@ -25,7 +25,7 @@ const DESTINATIONS = [
     code: "JFK",
     country: "ABD",
     program: "Work & Travel USA",
-    flight: "BPX-JFK26",
+    flight: "ADV-JFK26",
     gate: "04B",
     seat: "01A",
     mileage: "5,012 MILES",
@@ -37,7 +37,7 @@ const DESTINATIONS = [
     code: "LHR",
     country: "İNGİLTERE",
     program: "Akademi & Master (UK)",
-    flight: "BPX-LON26",
+    flight: "ADV-LON26",
     gate: "12A",
     seat: "02B",
     mileage: "1,553 MILES",
@@ -49,7 +49,7 @@ const DESTINATIONS = [
     code: "DUB",
     country: "İRLANDA",
     program: "Dil Okulu & Çalışma İzni",
-    flight: "BPX-DUB26",
+    flight: "ADV-DUB26",
     gate: "03F",
     seat: "03A",
     mileage: "1,830 MILES",
@@ -61,7 +61,7 @@ const DESTINATIONS = [
     code: "LAX",
     country: "CALIFORNIA, ABD",
     program: "West Coast WAT & Staj",
-    flight: "BPX-LAX26",
+    flight: "ADV-LAX26",
     gate: "08C",
     seat: "01F",
     mileage: "6,850 MILES",
@@ -73,7 +73,7 @@ const DESTINATIONS = [
     code: "MIA",
     country: "FLORIDA, ABD",
     program: "Work & Travel",
-    flight: "BPX-MIA26",
+    flight: "ADV-MIA26",
     gate: "07A",
     seat: "01C",
     mileage: "5,980 MILES",
@@ -113,7 +113,7 @@ function SubmitButton({ mode }: { mode: "student" | "staff" }) {
       ) : (
         <>
           <ShieldCheck className="h-4 w-4 text-sky-400" />
-          <span>BACKPAX KURUMSAL PANEL GİRİŞİ</span>
+          <span>ADVICE KURUMSAL PANEL GİRİŞİ</span>
           <ArrowRight className="h-4 w-4 text-slate-300 ml-0.5" />
         </>
       )}
@@ -141,8 +141,8 @@ function LinearBarcodeStrip() {
       </div>
       <div className="flex justify-between font-mono text-[8px] text-slate-400 tracking-wider">
         <span>ETKT 232 948102938 1</span>
-        <span>PNR: BPX-2026-OK</span>
-        <span className="hidden sm:inline">IATA // BACKPAX</span>
+        <span>PNR: ADV-2026-OK</span>
+        <span className="hidden sm:inline">IATA // ADVICE YED</span>
         <span>ELECTRONIC TICKET</span>
       </div>
     </div>
@@ -235,8 +235,8 @@ export default function LoginPage() {
                   <div className="rounded-lg bg-white p-1 shadow-2xs border border-slate-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="/backpax-logo.svg"
-                      alt="BackPax Global Education"
+                      src="/advice-logo.svg"
+                      alt="Advice Yurtdışı Eğitim"
                       className="h-7 w-auto object-contain"
                     />
                   </div>
@@ -250,7 +250,7 @@ export default function LoginPage() {
                       </span>
                     </div>
                     <span className="text-xs sm:text-sm font-black tracking-tight text-[#0f172a] uppercase">
-                      BACKPAX GLOBAL EDUCATION &amp; TRAVEL
+                      ADVICE YURTDIŞI EĞİTİM DAN.
                     </span>
                   </div>
                 </div>
@@ -303,7 +303,7 @@ export default function LoginPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#0f172a] text-white px-4 py-2.5">
                   <div className="flex items-center gap-2 text-xs font-semibold">
                     <Building2 className="h-4 w-4 text-sky-400" />
-                    <span>BackPax Kurumsal Yönetim Paneli</span>
+                    <span>Advice Kurumsal Yönetim Paneli</span>
                   </div>
                   <span className="text-[11px] text-slate-300">
                     Lead Takibi · İş Havuzu · Okul Başvuruları · Grup Vize · Muhasebe
@@ -335,7 +335,7 @@ export default function LoginPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder={
-                          loginMode === "student" ? "ogrenci@backpax.com" : "isim@adviceyed.com"
+                          loginMode === "student" ? "ogrenci@adviceyed.com" : "isim@adviceyed.com"
                         }
                         className="w-full rounded-lg bg-slate-50/70 hover:bg-white focus:bg-white py-2 pl-9 pr-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 border border-slate-300 shadow-2xs focus:border-[#0f172a] focus:outline-none focus:ring-3 focus:ring-slate-200 transition-all"
                       />
@@ -400,7 +400,7 @@ export default function LoginPage() {
                     {loginMode === "student" ? "YOLCU KUPONU" : "YETKİLİ KARTI"}
                   </div>
                   <div className="text-[8px] font-mono text-slate-400">
-                    BACKPAX · PNR: BPX26
+                    ADVICE · PNR: ADV26
                   </div>
                 </div>
 

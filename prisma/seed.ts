@@ -977,7 +977,7 @@ async function main() {
   console.log("✅ 5 adet zengin kayıtlı öğrenci (Student) oluşturuldu.");
 
   // =========================================================================
-  // 4. BACKPAX V2 MODÜLLERİ: Muhasebe Rolü, WAT İş Havuzu, Partner Okullar,
+  // 4. ADVICE V2 MODÜLLERİ: Muhasebe Rolü, WAT İş Havuzu, Partner Okullar,
   //    Akademik Başvurular, Yaz Okulu Allocation/Booking ve Muhasebe Defteri
   // =========================================================================
 
@@ -1261,7 +1261,7 @@ async function main() {
       jobId: watJob1.id,
       studentId: student1.id,
       assignedById: advisorRecep.id,
-      shareToken: "backpax-wat-offer-anil-2026",
+      shareToken: "advice-wat-offer-anil-2026",
       status: "ACCEPTED",
       studentNote: "İş şartlarını ve konaklama detaylarını inceledim, onaylıyorum.",
       respondedAt: new Date("2026-02-15T14:20:00Z"),
@@ -1273,7 +1273,7 @@ async function main() {
       jobId: watJob2.id,
       studentId: student4.id,
       assignedById: advisorRecep.id,
-      shareToken: "backpax-wat-offer-baris-2026",
+      shareToken: "advice-wat-offer-baris-2026",
       status: "SENT",
     },
   });
@@ -1435,7 +1435,7 @@ async function main() {
       usedQuota: 12,
       pricePerStudent: 3800.0,
       currency: Currency.GBP,
-      notes: "BackPax 2026 Temmuz UK Grup Kontenjanı",
+      notes: "Advice 2026 Temmuz UK Grup Kontenjanı",
     },
   });
 
@@ -1604,7 +1604,7 @@ async function main() {
     ],
   });
 
-  console.log("✅ BackPax V2 Modülleri (İş Havuzu, Partner Okullar, Başvurular, Booking, Muhasebe) tohumlandı.");
+  console.log("✅ Advice V2 Modülleri (İş Havuzu, Partner Okullar, Başvurular, Booking, Muhasebe) tohumlandı.");
   console.log("🚀 CRM Mock Veri Tohumlaması Başarıyla Tamamlandı!");
 }
 

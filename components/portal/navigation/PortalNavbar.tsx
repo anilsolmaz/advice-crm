@@ -47,8 +47,8 @@ export function PortalNavbar({ user, pendingApprovalsCount }: Props) {
         <Link href="/anasayfa" className="flex items-center gap-3 py-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/backpax-logo.svg"
-            alt="BackPax Global Education"
+            src="/advice-logo.svg"
+            alt="Advice Yurtdışı Eğitim"
             className="h-10 w-auto object-contain"
           />
           <div className="hidden sm:block border-l border-slate-200 pl-3">

@@ -137,12 +137,12 @@ export default async function StudentHomePage() {
 
   return (
     <div className="space-y-6">
-      {/* ── BACKPAX BOARDING PASS HERO HEADER (§3) ───────────────────────── */}
+      {/* ── ADVICE BOARDING PASS HERO HEADER (§3) ───────────────────────── */}
       <div className="overflow-hidden rounded-3xl bg-[#0f172a] text-white shadow-xl border border-slate-800">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 px-6 py-3.5 bg-slate-900/90">
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-sky-400 font-bold">
             <Plane className="h-4 w-4" />
-            <span>BACKPAX BOARDING PASS · PASSENGER PORTAL</span>
+            <span>ADVICE BOARDING PASS · PASSENGER PORTAL</span>
           </div>
           <div className="flex items-center gap-3 text-xs font-mono text-slate-300">
             <span>PNR: BPX-{student.id.slice(0, 6).toUpperCase()}</span>

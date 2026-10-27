@@ -54,7 +54,7 @@ export default async function GroupsPage() {
         s.watDetail?.sponsorName ||
         s.summerCampDetail?.campProvider ||
         s.lead?.sponsor ||
-        "BackPax",
+        "Advice",
       dateOfBirth: s.profile?.dateOfBirth
         ? s.profile.dateOfBirth.toISOString()
         : null,

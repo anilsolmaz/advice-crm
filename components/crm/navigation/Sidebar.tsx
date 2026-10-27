@@ -136,8 +136,8 @@ export default function Sidebar({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/backpax-logo.svg"
-          alt="BackPax CRM"
+          src="/advice-logo.svg"
+          alt="Advice Yurtdışı Eğitim"
           className="h-9 w-auto max-w-[175px] object-contain"
         />
       </Link>
@@ -327,7 +327,7 @@ export default function Sidebar({
       {/* Version footer */}
       <div className="border-t border-slate-800 px-5 py-3">
         <p className="text-[10px] font-semibold tracking-wider text-slate-400">
-          v2.0 · BACKPAX CRM
+          v2.0 · ADVICE CRM
         </p>
       </div>
     </aside>

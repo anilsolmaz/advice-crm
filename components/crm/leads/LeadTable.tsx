@@ -153,7 +153,7 @@ export function LeadTable({
       ? digits
       : "90" + digits;
     const msg = encodeURIComponent(
-      `Merhaba ${fullName}, BackPax Yurtdışı Eğitim'den ulaşıyorum. Başvurunuz hakkında görüşmek için müsait misiniz?`,
+      `Merhaba ${fullName}, Advice Yurtdışı Eğitim'den ulaşıyorum. Başvurunuz hakkında görüşmek için müsait misiniz?`,
     );
     return `https://wa.me/${intl}?text=${msg}`;
   }
