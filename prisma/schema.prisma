@@ -217,6 +217,8 @@ model Lead {
   program         Program
   sponsor         String?
   city            String?
+  gender          String?    // MALE, FEMALE
+  avatarUrl       String?
   visaStatus      String?
   notes           String?
   advisorId       String?    @db.Uuid

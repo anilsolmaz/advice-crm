@@ -50,6 +50,8 @@ export default async function LeadsPage() {
     advisorName: l.advisor?.fullName ?? null,
     sponsor: l.sponsor,
     city: l.city,
+    gender: l.gender,
+    avatarUrl: l.avatarUrl,
     visaStatus: l.visaStatus,
     notes: l.notes,
     followUpAt: l.followUpAt,

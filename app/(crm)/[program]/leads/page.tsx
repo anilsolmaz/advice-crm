@@ -61,6 +61,8 @@ export default async function ProgramLeadsPage({ params }: Props) {
     advisorName: l.advisor?.fullName ?? null,
     sponsor: l.sponsor,
     city: l.city,
+    gender: l.gender,
+    avatarUrl: l.avatarUrl,
     visaStatus: l.visaStatus,
     notes: l.notes,
     followUpAt: l.followUpAt,

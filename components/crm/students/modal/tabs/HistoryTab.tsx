@@ -116,6 +116,47 @@ export function HistoryTab({ notes, studentId, student }: Props) {
           ) : (
             sorted.map((note) => {
               const parsed = extractNoteTitleAndBody(note.note);
+              const pLower = parsed.title.toLowerCase();
+              const isLog =
+                !note.isPinned &&
+                (pLower.includes("log") ||
+                  ((pLower.includes("mail") || pLower.includes("whatsapp")) &&
+                    parsed.body.length < 90));
+
+              if (isLog) {
+                return (
+                  <div
+                    key={note.id}
+                    className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-2xs hover:border-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <span className="text-slate-300 font-mono text-[10px]">---</span>
+                      <span className="inline-flex items-center gap-1 font-bold text-[#1e3a8a] text-[11px] shrink-0">
+                        {pLower.includes("mail")
+                          ? "✉️"
+                          : pLower.includes("whatsapp")
+                          ? "💬"
+                          : "⚡"}
+                        {parsed.title}
+                      </span>
+                      <span className="text-slate-300">·</span>
+                      <span className="truncate text-slate-700 font-medium text-[11px]">
+                        {parsed.body}
+                      </span>
+                      <span className="text-slate-300 font-mono text-[10px]">---</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 text-[10px] text-slate-400">
+                      <span className="font-semibold text-slate-600">
+                        {(note.authorName || "Danışman").replace(/\s*\(\s*Danışman\s*\)/gi, "")}
+                      </span>
+                      <span className="tabular-nums font-mono">
+                        {formatDateTime(note.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={note.id}
@@ -135,7 +176,7 @@ export function HistoryTab({ notes, studentId, student }: Props) {
                       </span>
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
                         <User className="h-3 w-3 text-slate-400" />
-                        {note.authorName}
+                        {(note.authorName || "Danışman").replace(/\s*\(\s*Danışman\s*\)/gi, "")}
                       </span>
                       {note.isPinned && (
                         <span className="text-[10px] font-bold text-amber-600">
@@ -177,50 +218,9 @@ export function HistoryTab({ notes, studentId, student }: Props) {
         </div>
       </div>
 
-      {/* SAĞ KOLON (5/12): Hızlı İletişim Butonları + Yeni Not Girme */}
+      {/* SAĞ KOLON (5/12): ÜSTTE YENİ NOT + ALTTA HIZLI İLETİŞİM KANALLARI */}
       <div className="lg:col-span-5 space-y-4">
-        {student && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Hızlı İletişim Kanalları
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {student.user.phone ? (
-                <>
-                  <a
-                    href={`tel:${student.user.phone}`}
-                    className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#0f172a] py-2.5 px-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors"
-                  >
-                    <PhoneCall className="h-4 w-4 text-amber-400" />
-                    <span>Telefon Aç</span>
-                  </a>
-                  <a
-                    href={`https://wa.me/90${cleanWaPhone}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex flex-col items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2.5 px-2 text-xs font-bold text-white hover:bg-emerald-500 transition-colors"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span>WhatsApp</span>
-                  </a>
-                </>
-              ) : (
-                <div className="col-span-2 flex items-center justify-center rounded-xl border border-dashed border-slate-200 py-2.5 text-[11px] text-slate-400">
-                  Telefon girilmedi
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setShowEmailModal(true)}
-                className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#1e3a8a] py-2.5 px-2 text-xs font-bold text-white hover:bg-blue-800 transition-colors"
-              >
-                <Mail className="h-4 w-4 text-sky-300" />
-                <span>Mail Gönder</span>
-              </button>
-            </div>
-          </div>
-        )}
-
+        {/* 1. Üst: Yeni Not Ekleme Kartı */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
           <h4 className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5 border-b border-slate-100 pb-2.5">
             <Plus className="h-4 w-4 text-[#1e3a8a]" />
@@ -229,7 +229,7 @@ export function HistoryTab({ notes, studentId, student }: Props) {
 
           <div>
             <label className="mb-1 block text-[11px] font-bold text-slate-600">
-              Not Başlığı / Kaynak
+              Not Başlığı / Türü
             </label>
             <select
               name="noteTitleSelector"
@@ -265,6 +265,68 @@ export function HistoryTab({ notes, studentId, student }: Props) {
             <SubmitButton />
           </form>
         </div>
+
+        {/* 2. Alt: Hızlı İletişim Kanalları (Soldan Sağa Tam Genişlik) */}
+        {student && (
+          <div className="space-y-2.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Hızlı İletişim Kanalları
+            </p>
+
+            {/* WhatsApp Kartı */}
+            <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 transition-all">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+                  <MessageCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-emerald-950">
+                    Hızlı WhatsApp İletişimi
+                  </p>
+                  <p className="text-sm font-semibold text-emerald-800">
+                    {student.user.phone || "Telefon girilmedi"}
+                  </p>
+                </div>
+              </div>
+              {student.user.phone ? (
+                <a
+                  href={`https://wa.me/90${cleanWaPhone}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 shadow-xs transition-colors shrink-0"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp&apos;ı Aç
+                </a>
+              ) : null}
+            </div>
+
+            {/* E-Posta Kartı */}
+            <div className="flex items-center justify-between rounded-2xl border border-sky-200 bg-sky-50/70 p-3.5 transition-all">
+              <div className="flex items-center gap-3 min-w-0 pr-2">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1e3a8a] text-white shadow-xs">
+                  <Mail className="h-5 w-5 text-sky-300" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-sky-950">
+                    E-Posta Gönderimi
+                  </p>
+                  <p className="text-sm font-semibold text-sky-900 truncate">
+                    {student.user.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 shadow-xs transition-colors shrink-0"
+              >
+                <Mail className="h-4 w-4 text-sky-300" />
+                Mail Gönder
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showEmailModal && student && (

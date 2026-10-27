@@ -5,10 +5,8 @@ import { useState, useTransition, useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import {
   X,
-  PhoneCall,
   UserPlus,
   Save,
-  CalendarClock,
   CheckCircle2,
   AlertCircle,
   MessageCircle,
@@ -27,22 +25,28 @@ import {
 import { LeadStatusBadge } from "./LeadStatusBadge";
 import { ProgramBadge } from "@/components/crm/common/ProgramBadge";
 import { EmailComposeModal } from "@/components/crm/common/EmailComposeModal";
+import { GenderAvatar } from "@/components/crm/common/GenderAvatar";
 import {
   updateLead,
-  updateLeadStatus,
-  appendLeadNoteCard,
   logLeadCall,
+  logLeadCommunicationEvent,
   postponeLeadFollowUp,
   convertLeadToStudent,
 } from "@/actions/crm/leads";
-import type { LeadStatus } from "@prisma/client";
 
-interface ParsedNoteCard {
+interface ParsedNoteItem {
   id: string;
   dateTime: string;
   author: string;
   sourceOrTitle: string;
   content: string;
+  isLog: boolean;
+}
+
+function cleanAdvisorLabel(rawName?: string | null): string {
+  if (!rawName || !rawName.trim()) return "Atanmamış";
+  // Strip duplicate "(Danışman)" if present
+  return rawName.replace(/\s*\(\s*Danışman\s*\)/gi, "").trim();
 }
 
 function getBadgeStyleForSource(sourceOrTitle: string): string {
@@ -62,19 +66,37 @@ function getBadgeStyleForSource(sourceOrTitle: string): string {
   if (s.includes("e-posta") || s.includes("mail")) {
     return "bg-sky-50 text-sky-700 border-sky-200";
   }
-  if (s.includes("ilk kayıt") || s.includes("meta") || s.includes("google") || s.includes("web") || s.includes("aktarım")) {
+  if (
+    s.includes("ilk kayıt") ||
+    s.includes("meta") ||
+    s.includes("google") ||
+    s.includes("web") ||
+    s.includes("aktarım")
+  ) {
     return "bg-indigo-50 text-indigo-700 border-indigo-200";
   }
   return "bg-slate-100 text-slate-700 border-slate-200";
 }
 
-function parseLeadNoteCards(
+function isSingleLineLogItem(sourceOrTitle: string, content: string): boolean {
+  const s = sourceOrTitle.toLowerCase();
+  const c = content.toLowerCase();
+
+  if (s === "log" || s.startsWith("log ·") || s.endsWith("log")) return true;
+  if (s.includes("whatsapp") && content.length < 90) return true;
+  if ((s.includes("mail") || s.includes("e-posta")) && content.length < 90) return true;
+  if (c.includes("welcome maili") || c.includes("görüşme başlatıldı")) return true;
+  if (c.startsWith("---") && c.endsWith("---")) return true;
+
+  return false;
+}
+
+function parseLeadNotes(
   rawNotes: string | null | undefined,
   lead: CRMLeadRow,
-): ParsedNoteCard[] {
+): ParsedNoteItem[] {
   if (!rawNotes || !rawNotes.trim()) return [];
 
-  // Split into individual blocks: each `[...]: ...` line or separated paragraph becomes its own card
   const rawLines = rawNotes.split(/\r?\n/);
   const blocks: string[] = [];
   let currentBlock = "";
@@ -113,7 +135,7 @@ function parseLeadNoteCards(
 
   const sourceLabel = LEAD_SOURCE_LABELS[lead.source] || lead.source;
 
-  const cards: ParsedNoteCard[] = blocks.map((block, idx) => {
+  const items: ParsedNoteItem[] = blocks.map((block, idx) => {
     const bracketMatch = block.match(/^\[([^\]]+)\]:\s*([\s\S]*)$/);
     if (bracketMatch) {
       const header = bracketMatch[1].trim();
@@ -121,56 +143,58 @@ function parseLeadNoteCards(
 
       if (header.includes("·")) {
         const parts = header.split("·").map((p) => p.trim());
+        const title = parts.slice(2).join(" · ") || "Görüşme Notu";
         return {
           id: `note-${idx}`,
           dateTime: parts[0] || createdFallbackDate,
-          author: parts[1] || lead.advisorName || "Danışman",
-          sourceOrTitle: parts.slice(2).join(" · ") || "Görüşme Notu",
+          author: cleanAdvisorLabel(parts[1] || lead.advisorName),
+          sourceOrTitle: title,
           content,
+          isLog: isSingleLineLogItem(title, content),
         };
       }
 
       if (header.includes(" - ")) {
         const parts = header.split(" - ").map((p) => p.trim());
+        const title = parts[2] || "Hızlı Not";
         return {
           id: `note-${idx}`,
           dateTime: parts[0] || createdFallbackDate,
-          author: parts[1] || lead.advisorName || "Danışman",
-          sourceOrTitle: parts[2] || "Hızlı Not",
+          author: cleanAdvisorLabel(parts[1] || lead.advisorName),
+          sourceOrTitle: title,
           content,
+          isLog: isSingleLineLogItem(title, content),
         };
       }
 
       return {
         id: `note-${idx}`,
         dateTime: header,
-        author: lead.advisorName || "Danışman",
+        author: cleanAdvisorLabel(lead.advisorName),
         sourceOrTitle: "Görüşme Notu",
         content,
+        isLog: isSingleLineLogItem("Görüşme Notu", content),
       };
     }
 
-    // Plain-text initial note (e.g. "laalal" or webhook/import note)
-    let inferredTitle = `İlk Kayıt Notu (${sourceLabel})`;
-    if (block.startsWith("Meta Lead Ads")) {
-      inferredTitle = "Meta Lead Ads";
-    } else if (block.startsWith("Google Ads")) {
-      inferredTitle = "Google Ads";
-    } else if (block.startsWith("Toplu Aktarım:")) {
-      inferredTitle = "Toplu Excel/CSV Aktarımı";
-    }
+    // Plain-text initial note
+    let inferredTitle = `İlk Kayıt (${sourceLabel})`;
+    if (block.startsWith("Meta Lead")) inferredTitle = "Meta Lead Ads";
+    else if (block.startsWith("Google Ads")) inferredTitle = "Google Ads";
+    else if (block.startsWith("Toplu Aktarım")) inferredTitle = "Toplu Excel Aktarımı";
 
     return {
       id: `note-${idx}`,
       dateTime: createdFallbackDate,
-      author: lead.advisorName || "Sistem / İlk Kayıt",
+      author: cleanAdvisorLabel(lead.advisorName || "Sistem"),
       sourceOrTitle: inferredTitle,
       content: block,
+      isLog: false,
     };
   });
 
-  // Reverse so newest notes appear at the top ("son notlar üstte yer alsın")
-  return cards.reverse();
+  // Newest items on top
+  return items.reverse();
 }
 
 function SaveButton({ label = "Değişiklikleri Kaydet" }: { label?: string }) {
@@ -187,13 +211,18 @@ function SaveButton({ label = "Değişiklikleri Kaydet" }: { label?: string }) {
   );
 }
 
-const CALL_OUTCOMES = [
+const UNIFIED_CALL_OUTCOMES = [
+  { value: "Görüşme Notu", label: "Görüşme Notu (Genel)", suggestedDays: 3 },
   { value: "REACHED", label: "Ulaşıldı / Görüşüldü", suggestedDays: 3 },
   { value: "INTERESTED", label: "Çok İlgili / Tekrar Aranacak", suggestedDays: 2 },
   { value: "UNREACHABLE", label: "Ulaşılamadı / Cevap Yok", suggestedDays: 1 },
   { value: "BUSY", label: "Meşgul / Sonra Ara Dedi", suggestedDays: 1 },
   { value: "UNINTERESTED", label: "İlgilenmiyor", suggestedDays: 0 },
   { value: "REGISTERED", label: "Kayıt Oldu", suggestedDays: 0 },
+  { value: "WhatsApp Görüşmesi", label: "WhatsApp Görüşmesi", suggestedDays: 3 },
+  { value: "Aday Profil & Bütçe", label: "Aday Profil & Bütçe Notu", suggestedDays: 4 },
+  { value: "Vize & Evrak Notu", label: "Vize & Evrak Notu", suggestedDays: 5 },
+  { value: "Özel Not", label: "Özel Danışman Notu", suggestedDays: 0 },
 ];
 
 interface Props {
@@ -215,16 +244,19 @@ export function LeadDetailModal({
     updateLead.bind(null, lead.id),
     { success: false, error: "" },
   );
+
   const [localNotes, setLocalNotes] = useState<string>(lead.notes ?? "");
-  const [newNote, setNewNote] = useState<string>("");
-  const [noteTitle, setNoteTitle] = useState<string>("Görüşme Notu");
-  const [noteSavedToast, setNoteSavedToast] = useState(false);
-  const [callSaved, setCallSaved] = useState(false);
-  const [callOutcome, setCallOutcome] = useState("REACHED");
-  const [callNotes, setCallNotes] = useState("");
+  const [selectedOutcome, setSelectedOutcome] = useState("Görüşme Notu");
+  const [unifiedNoteText, setUnifiedNoteText] = useState("");
+  const [saveToast, setSaveToast] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<string>(lead.program);
   const [isPending, startTransition] = useTransition();
+
+  const defaultFollowUpStr = lead.followUpAt
+    ? new Date(lead.followUpAt).toISOString().slice(0, 10)
+    : "";
+  const [nextFollowUpDate, setNextFollowUpDate] = useState(defaultFollowUpStr);
 
   useEffect(() => {
     setLocalNotes(lead.notes ?? "");
@@ -235,36 +267,14 @@ export function LeadDetailModal({
       if (editState.updatedNotes !== undefined) {
         setLocalNotes(editState.updatedNotes ?? "");
       }
-      setNewNote("");
     }
   }, [editState]);
 
-  const parsedNoteCards = parseLeadNoteCards(localNotes, lead);
+  const parsedItems = parseLeadNotes(localNotes, lead);
 
-  function handleQuickNoteAdd() {
-    if (!newNote.trim()) return;
-    setNoteSavedToast(false);
-    startTransition(async () => {
-      const res = await appendLeadNoteCard(lead.id, noteTitle, newNote);
-      if (res.success) {
-        if (res.updatedNotes !== undefined) {
-          setLocalNotes(res.updatedNotes ?? "");
-        }
-        setNewNote("");
-        setNoteSavedToast(true);
-        setTimeout(() => setNoteSavedToast(false), 2500);
-      }
-    });
-  }
-
-  // Suggested next follow-up date when call outcome changes
-  const defaultFollowUpStr = lead.followUpAt
-    ? new Date(lead.followUpAt).toISOString().slice(0, 10)
-    : "";
-  const [nextFollowUpDate, setNextFollowUpDate] = useState(defaultFollowUpStr);
-
-  function handleOutcomeSelect(outcomeVal: string) {
-    const found = CALL_OUTCOMES.find((o) => o.value === outcomeVal);
+  function handleOutcomeChange(val: string) {
+    setSelectedOutcome(val);
+    const found = UNIFIED_CALL_OUTCOMES.find((o) => o.value === val);
     if (found && found.suggestedDays > 0) {
       const next = new Date();
       next.setDate(next.getDate() + found.suggestedDays);
@@ -272,10 +282,51 @@ export function LeadDetailModal({
     }
   }
 
+  function handleSaveUnifiedNote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!unifiedNoteText.trim()) return;
+
+    setSaveToast(false);
+    startTransition(async () => {
+      const res = await logLeadCall(
+        lead.id,
+        selectedOutcome,
+        unifiedNoteText.trim(),
+        nextFollowUpDate || null,
+      );
+      if (res.success) {
+        if (res.updatedNotes !== undefined) {
+          setLocalNotes(res.updatedNotes ?? "");
+        }
+        setUnifiedNoteText("");
+        setSaveToast(true);
+        setTimeout(() => setSaveToast(false), 2500);
+      }
+    });
+  }
+
+  function handlePostpone(days: number) {
+    startTransition(async () => {
+      const res = await postponeLeadFollowUp(lead.id, days);
+      if (res.success && res.newFollowUpAt) {
+        setNextFollowUpDate(new Date(res.newFollowUpAt).toISOString().slice(0, 10));
+      }
+    });
+  }
+
+  function handleLogEvent(eventLabel: string) {
+    startTransition(async () => {
+      const res = await logLeadCommunicationEvent(lead.id, eventLabel);
+      if (res.success && res.updatedNotes !== undefined) {
+        setLocalNotes(res.updatedNotes ?? "");
+      }
+    });
+  }
+
   function handleConvert() {
     if (
       !confirm(
-        `"${lead.fullName}" adlı adayı kayıtlı öğrenciye dönüştürmek istediğinize emin misiniz?`,
+        `"${lead.fullName}" adlı adayı kesin kayıtlı öğrenciye dönüştürmek istediğinize emin misiniz?`,
       )
     )
       return;
@@ -284,90 +335,99 @@ export function LeadDetailModal({
     });
   }
 
-  function handlePostpone(days: number) {
-    startTransition(() => {
-      postponeLeadFollowUp(lead.id, days);
-    });
-  }
-
   const cleanWaPhone = lead.phone.replace(/\D/g, "").replace(/^0/, "");
+  const advisorDisplay = cleanAdvisorLabel(lead.advisorName);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-      <div className="flex h-full max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-        {/* ── 1. ÜST PROFİL KARTI (Top Profile Card) ────────────────── */}
-        <div className="border-b border-slate-200 bg-white p-5">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-center">
-            {/* Avatar & Name */}
-            <div className="lg:col-span-4 flex items-center gap-3.5 lg:border-r border-slate-100 lg:pr-4">
-              <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-[#0f172a] text-white text-lg font-bold shadow-xs">
-                {lead.fullName.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base font-bold text-slate-900 truncate">
-                  {lead.fullName}
-                </h2>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <ProgramBadge program={lead.program as Program} showIcon />
+      <div className="flex h-full max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        {/* ── 1. ÜST PROFİL KARTI (Larger Profile Card Header) ────────────────── */}
+        <div className="border-b border-slate-200 bg-white p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            {/* Sol Bölüm: Büyük Avatar + İsim + İletişim Bilgileri */}
+            <div className="flex items-center gap-4">
+              <GenderAvatar
+                avatarUrl={lead.avatarUrl}
+                gender={lead.gender}
+                name={lead.fullName}
+                size="xl"
+                className="ring-2 ring-slate-100"
+              />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+                    {lead.fullName}
+                  </h2>
+                  <ProgramBadge program={lead.program as Program} showIcon size="sm" />
                   <LeadStatusBadge status={lead.status} />
+                </div>
+
+                {/* Telefon ve E-Posta: İsim altında büyük & net */}
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span className="text-sm font-bold text-slate-800">
+                    {lead.phone}
+                  </span>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-sm font-medium text-slate-500">
+                    {lead.email}
+                  </span>
+                  {lead.city && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-xs font-semibold text-slate-400">
+                        {lead.city}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Contact Info */}
-            <div className="lg:col-span-3 space-y-1 text-xs text-slate-600 lg:border-r border-slate-100 lg:px-4">
-              <p className="font-semibold text-slate-900">{lead.phone}</p>
-              <p className="truncate text-slate-500">{lead.email}</p>
-              <p className="text-[11px] text-slate-400">
-                Şehir: <strong className="text-slate-600">{lead.city || "Belirtilmedi"}</strong>
-              </p>
-            </div>
+            {/* Orta/Sağ Bölüm: Danışman & Takip İstatistikleri + Aksiyonlar */}
+            <div className="flex flex-wrap items-center gap-4 lg:gap-6">
+              {/* Danışman & Takip Bilgileri */}
+              <div className="space-y-0.5 text-right text-xs">
+                <p className="font-semibold text-slate-700">
+                  Danışman:{" "}
+                  <strong className="font-bold text-[#1e3a8a]">
+                    {advisorDisplay}
+                  </strong>
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Takip:{" "}
+                  <strong className="text-slate-800">
+                    {lead.followUpAt
+                      ? new Date(lead.followUpAt).toLocaleDateString("tr-TR")
+                      : "Planlanmadı"}
+                  </strong>{" "}
+                  · Toplam Arama:{" "}
+                  <strong className="text-slate-800 font-bold">
+                    {lead.callCount ?? 0}
+                  </strong>
+                </p>
+              </div>
 
-            {/* Advisor & Source */}
-            <div className="lg:col-span-3 space-y-1 text-xs text-slate-600 lg:px-4">
-              <p>
-                Danışman:{" "}
-                <strong className="text-[#1e3a8a]">
-                  {lead.advisorName || "Atanmamış"}
-                </strong>
-              </p>
-              <p>
-                Kaynak:{" "}
-                <strong className="text-slate-800">
-                  {LEAD_SOURCE_LABELS[lead.source] || lead.source}
-                </strong>
-              </p>
-              <p className="text-[11px] text-slate-400">
-                Takip:{" "}
-                <strong className="text-slate-700">
-                  {lead.followUpAt
-                    ? new Date(lead.followUpAt).toLocaleDateString("tr-TR")
-                    : "Planlanmadı"}
-                </strong>{" "}
-                · Arama: {lead.callCount ?? 0}
-              </p>
-            </div>
-
-            {/* Top Right Actions (Convert & Close) */}
-            <div className="lg:col-span-2 flex items-center justify-end gap-2">
-              {lead.status !== "REGISTERED" && (
+              {/* Butonlar: Kesin Kayıt + Kapat */}
+              <div className="flex items-center gap-2">
+                {lead.status !== "REGISTERED" && (
+                  <button
+                    type="button"
+                    onClick={handleConvert}
+                    disabled={isPending}
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors shadow-xs"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Kesin Kayıt
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={handleConvert}
-                  disabled={isPending}
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+                  onClick={onClose}
+                  className="rounded-xl border border-slate-200 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                 >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  Kesin Kayıt
+                  <X className="h-5 w-5" />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl border border-slate-200 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -385,7 +445,7 @@ export function LeadDetailModal({
               }`}
             >
               <FileText className="h-3.5 w-3.5 text-[#1e3a8a]" />
-              Notlar &amp; İletişim ({parsedNoteCards.length})
+              Notlar &amp; İletişim ({parsedItems.length})
             </button>
             <button
               type="button"
@@ -411,216 +471,135 @@ export function LeadDetailModal({
         {/* ── 3. SEKME İÇERİĞİ ──────────────────────────────────────── */}
         {activeTab === "communication" ? (
           <div className="grid flex-1 grid-cols-1 lg:grid-cols-12 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
-            {/* SOL KOLON (7/12 — Yarıdan Geniş): SADECE Yukarıdan Aşağıya Not Kartları */}
+            {/* SOL KOLON (7/12 — Yarıdan Geniş): SADECE Yukarıdan Aşağıya Not & Log Akışı */}
             <div className="lg:col-span-7 flex flex-col overflow-hidden bg-slate-50/40 p-5">
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-[#0f172a]">
-                    Görüşme Detayı &amp; Notlar
+                    Görüşme Detayı &amp; İletişim Logları
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Son eklenen notlar en üstte yer alır · Dikey kaydırılabilir
+                    Son etkileşimler en üstte · Tek satırlık loglar ve detaylı not kartları
                   </p>
                 </div>
                 <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                  {parsedNoteCards.length} Kayıt
+                  {parsedItems.length} Kayıt
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-                {parsedNoteCards.length === 0 ? (
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                {parsedItems.length === 0 ? (
                   <div className="flex h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-slate-400">
                     <FileText className="h-6 w-6 mb-1.5 text-slate-300" />
                     <p className="text-xs font-medium">
-                      Henüz kayıtlı görüşme detayı veya not bulunmuyor.
+                      Henüz kayıtlı görüşme veya iletişim logu bulunmuyor.
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Sağ taraftaki panelden yeni not veya arama sonucu ekleyebilirsiniz.
+                      Sağ taraftaki panelden not girebilir veya hızlı WhatsApp/Mail başlatabilirsiniz.
                     </p>
                   </div>
                 ) : (
-                  parsedNoteCards.map((card) => (
-                    <div
-                      key={card.id}
-                      className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-2xs hover:border-slate-300 transition-colors"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 mb-1.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${getBadgeStyleForSource(
-                              card.sourceOrTitle,
-                            )}`}
-                          >
-                            {card.sourceOrTitle}
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
-                            <User className="h-3 w-3 text-slate-400" />
-                            {card.author}
+                  parsedItems.map((item) => {
+                    // Single-line log style (e.g. "---- Welcome maili atıldı ---")
+                    if (item.isLog) {
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-2xs hover:border-slate-300 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 pr-2">
+                            <span className="text-slate-300 font-mono text-[10px]">---</span>
+                            <span className="inline-flex items-center gap-1 font-bold text-[#1e3a8a] text-[11px] shrink-0">
+                              {item.sourceOrTitle.toLowerCase().includes("mail") ||
+                              item.content.toLowerCase().includes("mail")
+                                ? "✉️"
+                                : item.sourceOrTitle.toLowerCase().includes("whatsapp") ||
+                                  item.content.toLowerCase().includes("whatsapp")
+                                ? "💬"
+                                : "⚡"}
+                              {item.sourceOrTitle === "LOG"
+                                ? "İletişim Logu"
+                                : item.sourceOrTitle}
+                            </span>
+                            <span className="text-slate-300">·</span>
+                            <span className="truncate text-slate-700 font-medium text-[11px]">
+                              {item.content}
+                            </span>
+                            <span className="text-slate-300 font-mono text-[10px]">---</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 text-[10px] text-slate-400">
+                            <span className="font-semibold text-slate-600">{item.author}</span>
+                            <span className="tabular-nums font-mono">{item.dateTime}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Rich card style for discussion notes
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-2xs hover:border-slate-300 transition-colors"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 mb-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${getBadgeStyleForSource(
+                                item.sourceOrTitle,
+                              )}`}
+                            >
+                              {item.sourceOrTitle}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+                              <User className="h-3 w-3 text-slate-400" />
+                              {item.author}
+                            </span>
+                          </div>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 tabular-nums">
+                            <Clock className="h-3 w-3 text-slate-400" />
+                            {item.dateTime}
                           </span>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 tabular-nums">
-                          <Clock className="h-3 w-3 text-slate-400" />
-                          {card.dateTime}
-                        </span>
+                        <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
+                          {item.content}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
-                        {card.content}
-                      </p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
 
-            {/* SAĞ KOLON (5/12): Yeni Not Girme + Hızlı İletişim Butonları + Çağrı/Takip */}
+            {/* SAĞ KOLON (5/12): ÜSTTE BİRLEŞİK NOT/ARAMA GİRİŞİ + ALTTA HIZLI İLETİŞİM KANALLARI */}
             <div className="lg:col-span-5 overflow-y-auto bg-white p-5 space-y-4">
-              {/* 1. Hızlı İletişim Butonları */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Hızlı İletişim Kanalları
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <a
-                    href={`tel:${lead.phone}`}
-                    className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#0f172a] py-2.5 px-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors"
-                  >
-                    <PhoneCall className="h-4 w-4 text-amber-400" />
-                    <span>Telefon Aç</span>
-                  </a>
-                  <a
-                    href={`https://wa.me/90${cleanWaPhone}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex flex-col items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2.5 px-2 text-xs font-bold text-white hover:bg-emerald-500 transition-colors"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span>WhatsApp</span>
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailModal(true)}
-                    className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#1e3a8a] py-2.5 px-2 text-xs font-bold text-white hover:bg-blue-800 transition-colors"
-                  >
-                    <Mail className="h-4 w-4 text-sky-300" />
-                    <span>Mail Gönder</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 2. Yeni Not Girme Kartı */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
-                    <Plus className="h-4 w-4 text-[#1e3a8a]" />
-                    Yeni Not Ekle
-                  </h4>
-                  {noteSavedToast && (
-                    <span className="text-[11px] font-bold text-emerald-600">
-                      ✓ Eklendi
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-[11px] font-bold text-slate-600">
-                    Not Başlığı / Kaynak
-                  </label>
-                  <select
-                    value={noteTitle}
-                    onChange={(e) => setNoteTitle(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#0f172a] focus:outline-none"
-                  >
-                    <option value="Görüşme Notu">Görüşme Notu</option>
-                    <option value="Aday Profil & Bütçe">
-                      Aday Profil &amp; Bütçe
-                    </option>
-                    <option value="WhatsApp Görüşmesi">
-                      WhatsApp Görüşmesi
-                    </option>
-                    <option value="Vize & Evrak Notu">
-                      Vize &amp; Evrak Notu
-                    </option>
-                    <option value="Özel Not">Özel Not</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-[11px] font-bold text-slate-600">
-                    Not İçeriği
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Adayın İngilizce seviyesi, üniversitesi, bütçesi veya görüşme detayını yazın…"
-                    className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0f172a] focus:outline-none"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleQuickNoteAdd}
-                  disabled={isPending || !newNote.trim()}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#0f172a] py-2.5 text-xs font-bold text-white hover:bg-[#1e3a8a] disabled:opacity-40 transition-colors"
-                >
-                  <Plus className="h-3.5 w-3.5 text-sky-400" />
-                  Notu Kaydet
-                </button>
-              </div>
-
-              {/* 3. Arama Sonucu & Follow-Up Planlama Kartı */}
+              {/* 1. ÜST: Birleşik Görüşme Notu & Follow-Up Kaydı */}
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <div className="flex items-center gap-1.5">
-                    <PhoneCall className="h-3.5 w-3.5 text-[#1e3a8a]" />
+                    <Plus className="h-4 w-4 text-[#1e3a8a]" />
                     <h4 className="text-xs font-bold text-[#0f172a]">
-                      Arama Sonucu &amp; Takip (Follow-Up)
+                      Not, Görüşme &amp; Takip (Follow-Up) Kaydı
                     </h4>
                   </div>
-                  {callSaved && (
+                  {saveToast && (
                     <span className="text-[11px] font-bold text-emerald-600">
                       ✓ Kaydedildi
                     </span>
                   )}
                 </div>
 
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setCallSaved(false);
-                    startTransition(async () => {
-                      const res = await logLeadCall(
-                        lead.id,
-                        callOutcome,
-                        callNotes,
-                        nextFollowUpDate,
-                      );
-                      if (res.success) {
-                        if (res.updatedNotes !== undefined) {
-                          setLocalNotes(res.updatedNotes ?? "");
-                        }
-                        setCallSaved(true);
-                        setCallNotes("");
-                      }
-                    });
-                  }}
-                  className="space-y-2.5"
-                >
+                <form onSubmit={handleSaveUnifiedNote} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <label className="mb-1 block text-[11px] font-bold text-slate-600">
-                        Arama Sonucu
+                        Kayıt Türü / Sonuç
                       </label>
                       <select
-                        name="outcome"
-                        value={callOutcome}
-                        onChange={(e) => {
-                          setCallOutcome(e.target.value);
-                          handleOutcomeSelect(e.target.value);
-                        }}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-900"
+                        value={selectedOutcome}
+                        onChange={(e) => handleOutcomeChange(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-[#0f172a] focus:outline-none"
                       >
-                        {CALL_OUTCOMES.map((o) => (
+                        {UNIFIED_CALL_OUTCOMES.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
                           </option>
@@ -630,52 +609,57 @@ export function LeadDetailModal({
 
                     <div>
                       <label className="mb-1 block text-[11px] font-bold text-slate-600">
-                        Sonraki Follow-Up
+                        Sonraki Takip Tarihi
                       </label>
                       <input
                         type="date"
-                        name="nextFollowUpAt"
                         value={nextFollowUpDate}
                         onChange={(e) => setNextFollowUpDate(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-[#0f172a] focus:outline-none"
                       />
                     </div>
                   </div>
 
-                  <input
-                    type="text"
-                    name="notes"
-                    value={callNotes}
-                    onChange={(e) => setCallNotes(e.target.value)}
-                    placeholder="Kısa arama özeti (sol listeye otomatik düşer)…"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800"
-                  />
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold text-slate-600">
+                      Görüşme Notu / Detay
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={unifiedNoteText}
+                      onChange={(e) => setUnifiedNoteText(e.target.value)}
+                      placeholder="Görüşme özeti, bütçe, talep veya adayın son durumunu yazın…"
+                      className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0f172a] focus:outline-none"
+                    />
+                  </div>
 
                   <button
                     type="submit"
-                    disabled={isPending}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1e3a8a] py-2 text-xs font-bold text-white hover:bg-[#0f172a] disabled:opacity-50"
+                    disabled={isPending || !unifiedNoteText.trim()}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#0f172a] py-2.5 text-xs font-bold text-white hover:bg-[#1e3a8a] disabled:opacity-40 transition-colors shadow-xs"
                   >
-                    {isPending
-                      ? "Kaydediliyor…"
-                      : "Aramayı Kaydet & Takibi Güncelle"}
+                    <Plus className="h-3.5 w-3.5 text-sky-400" />
+                    {isPending ? "Kaydediliyor…" : "Not & Takip Bilgisini Kaydet"}
                   </button>
                 </form>
 
-                {/* Quick Follow-Up Postpone Buttons */}
-                <div className="pt-1 border-t border-slate-100">
-                  <div className="grid grid-cols-3 gap-1.5">
+                {/* Hızlı Gün Erteleme Butonları */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Hızlı Ertele:
+                  </span>
+                  <div className="flex items-center gap-1.5">
                     {[
-                      { d: 1, label: "+1 Gün Ertele" },
-                      { d: 3, label: "+3 Gün Ertele" },
-                      { d: 7, label: "+7 Gün Ertele" },
+                      { d: 1, label: "+1 Gün" },
+                      { d: 3, label: "+3 Gün" },
+                      { d: 7, label: "+7 Gün" },
                     ].map((btn) => (
                       <button
                         key={btn.d}
                         type="button"
                         onClick={() => handlePostpone(btn.d)}
                         disabled={isPending}
-                        className="rounded-lg border border-slate-200 bg-slate-50 py-1.5 px-2 text-[10px] font-bold text-slate-600 hover:bg-[#0f172a] hover:text-white transition-colors"
+                        className="rounded-lg border border-slate-200 bg-slate-50 py-1 px-2.5 text-[10px] font-bold text-slate-600 hover:bg-[#0f172a] hover:text-white transition-colors"
                       >
                         {btn.label}
                       </button>
@@ -683,19 +667,80 @@ export function LeadDetailModal({
                   </div>
                 </div>
               </div>
+
+              {/* 2. ALT: Hızlı İletişim Kanalları (İlk Dizayndaki Tam Genişlik Kartlar) */}
+              <div className="space-y-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Hızlı İletişim Kanalları
+                </p>
+
+                {/* WhatsApp Kartı: Soldan Sağa Tam Genişlik */}
+                <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+                      <MessageCircle className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-emerald-950">
+                        Hızlı WhatsApp İletişimi
+                      </p>
+                      <p className="text-sm font-semibold text-emerald-800">
+                        {lead.phone}
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href={`https://wa.me/90${cleanWaPhone}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() =>
+                      handleLogEvent("WhatsApp üzerinden görüşme açıldı")
+                    }
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 shadow-xs transition-colors shrink-0"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    WhatsApp&apos;ı Aç
+                  </a>
+                </div>
+
+                {/* E-Posta Kartı: Soldan Sağa Tam Genişlik */}
+                <div className="flex items-center justify-between rounded-2xl border border-sky-200 bg-sky-50/70 p-3.5 transition-all">
+                  <div className="flex items-center gap-3 min-w-0 pr-2">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1e3a8a] text-white shadow-xs">
+                      <Mail className="h-5 w-5 text-sky-300" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-sky-950">
+                        E-Posta Gönderimi
+                      </p>
+                      <p className="text-sm font-semibold text-sky-900 truncate">
+                        {lead.email}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailModal(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 shadow-xs transition-colors shrink-0"
+                  >
+                    <Mail className="h-4 w-4 text-sky-300" />
+                    Mail Gönder
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
-          /* TAB 2: Profile, Program & Advisor Assignment Form */
+          /* TAB 2: Profil & Kayıt Bilgilerini Düzenle */
           <div className="flex-1 overflow-y-auto p-6">
             <div className="mx-auto max-w-3xl space-y-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-bold text-[#0f172a]">
-                    Aday Profil, Program &amp; Danışman Bilgileri
+                    Aday Profil, Cinsiyet, Fotoğraf &amp; Danışman Bilgileri
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Temel iletişim bilgilerini, programı veya sorumlu danışmanı buradan güncelleyebilirsiniz.
+                    Cinsiyet bilgisine göre avatar silueti güncellenir veya fotoğraf URL&apos;si ekleyebilirsiniz.
                   </p>
                 </div>
               </div>
@@ -735,6 +780,21 @@ export function LeadDetailModal({
 
                   <div>
                     <label className="mb-1 block text-xs font-bold text-slate-700">
+                      Cinsiyet (Avatar Belirler)
+                    </label>
+                    <select
+                      name="gender"
+                      defaultValue={lead.gender ?? ""}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    >
+                      <option value="">Belirtilmedi (Varsayılan Siluet)</option>
+                      <option value="MALE">Erkek</option>
+                      <option value="FEMALE">Kadın</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-700">
                       Telefon Numarası
                     </label>
                     <input
@@ -755,6 +815,19 @@ export function LeadDetailModal({
                       name="email"
                       defaultValue={lead.email}
                       required
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[#0f172a] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs font-bold text-slate-700">
+                      Profil / Vize Fotoğrafı URL (Opsiyonel)
+                    </label>
+                    <input
+                      type="url"
+                      name="avatarUrl"
+                      defaultValue={lead.avatarUrl ?? ""}
+                      placeholder="https://... (Fotoğraf girilmezse cinsiyete göre siluet gösterilir)"
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[#0f172a] focus:outline-none"
                     />
                   </div>
@@ -802,7 +875,7 @@ export function LeadDetailModal({
                       <option value="">Atanmamış</option>
                       {advisors.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.fullName}
+                          {cleanAdvisorLabel(a.fullName)}
                         </option>
                       ))}
                     </select>
@@ -879,7 +952,7 @@ export function LeadDetailModal({
 
                   <div className="sm:col-span-2">
                     <label className="mb-1 block text-xs font-bold text-slate-700">
-                      Sonraki Aranma / Takip Tarihi (Follow-Up)
+                      Sonraki Takip Tarihi (Follow-Up)
                     </label>
                     <input
                       type="date"
@@ -891,7 +964,7 @@ export function LeadDetailModal({
                 </div>
 
                 <div className="flex justify-end pt-3">
-                  <SaveButton label="Lead Bilgilerini Güncelle" />
+                  <SaveButton label="Aday Bilgilerini Güncelle" />
                 </div>
               </form>
             </div>
@@ -904,7 +977,10 @@ export function LeadDetailModal({
             recipientEmail={lead.email}
             programLabel={PROGRAM_LABELS[lead.program as Program]}
             leadId={lead.id}
-            onClose={() => setShowEmailModal(false)}
+            onClose={() => {
+              setShowEmailModal(false);
+              handleLogEvent("E-Posta gönderildi");
+            }}
           />
         )}
       </div>

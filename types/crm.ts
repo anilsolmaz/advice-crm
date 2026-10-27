@@ -77,6 +77,8 @@ export type CRMLead = {
   program: Program;
   sponsor?: string | null;
   city?: string | null;
+  gender?: string | null;
+  avatarUrl?: string | null;
   visaStatus?: string | null;
   notes: string | null;
   advisorId: string | null;
@@ -99,6 +101,8 @@ export type CRMLeadRow = Pick<
   advisorName?: string | null;
   sponsor?: string | null;
   city?: string | null;
+  gender?: string | null;
+  avatarUrl?: string | null;
   visaStatus?: string | null;
   notes?: string | null;
   followUpAt?: Date | null;

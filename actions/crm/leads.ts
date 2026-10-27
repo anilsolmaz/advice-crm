@@ -10,7 +10,12 @@ import crypto from "crypto";
 import type { LeadStatus, LeadSource, Program } from "@prisma/client";
 
 export type LeadFormState =
-  | { success: true; duplicateWarning?: string; updatedNotes?: string | null }
+  | {
+      success: true;
+      duplicateWarning?: string;
+      updatedNotes?: string | null;
+      newFollowUpAt?: string;
+    }
   | { success: false; error: string; isDuplicate?: boolean };
 
 const SOURCE_LABELS_TR: Record<string, string> = {
@@ -49,6 +54,8 @@ export async function createLead(
   const source = ((formData.get("source") as LeadSource) || "WEBSITE") as LeadSource;
   const sponsor = (formData.get("sponsor") as string)?.trim() || null;
   const city = (formData.get("city") as string)?.trim() || null;
+  const gender = (formData.get("gender") as string)?.trim() || null;
+  const avatarUrl = (formData.get("avatarUrl") as string)?.trim() || null;
   const visaStatus = (formData.get("visaStatus") as string)?.trim() || null;
   const followUpAtRaw = formData.get("followUpAt") as string | null;
   const notes = (formData.get("notes") as string)?.trim() || null;
@@ -92,6 +99,8 @@ export async function createLead(
       source,
       sponsor,
       city,
+      gender,
+      avatarUrl,
       visaStatus,
       followUpAt: followUpAtRaw ? new Date(followUpAtRaw) : null,
       notes: formattedNotes,
@@ -148,6 +157,8 @@ export async function updateLead(
   const program = formData.get("program") as Program | null;
   const sponsor = formData.get("sponsor") as string | null;
   const city = formData.get("city") as string | null;
+  const gender = formData.get("gender") as string | null;
+  const avatarUrl = formData.get("avatarUrl") as string | null;
   const visaStatus = formData.get("visaStatus") as string | null;
   const advisorId = formData.get("advisorId") as string | null;
   const followUpAtRaw = formData.get("followUpAt") as string | null;
@@ -172,6 +183,8 @@ export async function updateLead(
       ...(program ? { program } : {}),
       sponsor: sponsor !== undefined ? sponsor || null : undefined,
       city: city !== undefined ? city || null : undefined,
+      gender: gender !== undefined ? gender || null : undefined,
+      avatarUrl: avatarUrl !== undefined ? avatarUrl || null : undefined,
       visaStatus: visaStatus !== undefined ? visaStatus || null : undefined,
       ...(advisorId ? { advisorId } : {}),
       followUpAt:
@@ -218,7 +231,29 @@ export async function appendLeadNoteCard(
   return { success: true, updatedNotes };
 }
 
-// ── logLeadCall (Call Result + Next Follow-up Date - Section 2 [P1]) ──────────
+// ── logLeadCommunicationEvent (Sleek Single-Line Log Entry) ───────────────────
+
+export async function logLeadCommunicationEvent(
+  leadId: string,
+  eventLabel: string,
+): Promise<LeadFormState> {
+  const advisor = await requireStaff();
+  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!lead) return { success: false, error: "Aday bulunamadı." };
+
+  const newEntry = `[${formatTrDateTime()} · ${advisor.fullName} · LOG]: ${eventLabel.trim()}`;
+  const updatedNotes = lead.notes ? `${lead.notes}\n\n${newEntry}` : newEntry;
+
+  await prisma.lead.update({
+    where: { id: leadId },
+    data: { notes: updatedNotes },
+  });
+
+  revalidatePath("/leads");
+  revalidatePath("/dashboard");
+  return { success: true, updatedNotes };
+}
+
 
 export async function logLeadCall(
   leadId: string,
@@ -297,7 +332,7 @@ export async function postponeLeadFollowUp(
 
   revalidatePath("/leads");
   revalidatePath("/dashboard");
-  return { success: true };
+  return { success: true, newFollowUpAt: nextDate.toISOString() };
 }
 
 // ── addLeadNote (Timestamped History Log) ─────────────────────────────────────

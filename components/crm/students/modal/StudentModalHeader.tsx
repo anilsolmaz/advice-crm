@@ -2,11 +2,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Printer, FileDown, Camera, PhoneCall, MessageCircle, Mail } from "lucide-react";
+import { Printer, Camera, MessageCircle, Mail } from "lucide-react";
 import type { CRMStudentDetail, CRMWatDetail } from "@/types/crm";
 import { PROGRAM_LABELS } from "@/types/crm";
 import { ProgramBadge } from "@/components/crm/common/ProgramBadge";
 import { EmailComposeModal } from "@/components/crm/common/EmailComposeModal";
+import { GenderAvatar } from "@/components/crm/common/GenderAvatar";
 import { advanceWatStep } from "@/actions/crm/students";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/date";
@@ -51,81 +52,82 @@ export function StudentModalHeader({ student, watDetail }: Props) {
     });
   }
 
+  const cleanAdvisor = (student.user as any)?.advisor?.fullName || (student as any).advisorName;
+  const cleanAdvisorText = cleanAdvisor
+    ? cleanAdvisor.replace(/\s*\(\s*Danışman\s*\)/gi, "").trim()
+    : "Atanmamış";
+
   return (
     <div className="p-6">
       <div className="flex items-start gap-5">
         {/* Avatar */}
         <div className="relative flex-shrink-0">
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-2xl font-bold text-white shadow-md">
-            {student.user.fullName.charAt(0).toUpperCase()}
-          </div>
-          <button
-            type="button"
-            className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-500 hover:text-blue-600 transition-colors"
-            title="Fotoğraf yükle"
-          >
-            <Camera className="h-3.5 w-3.5" />
-          </button>
+          <GenderAvatar
+            avatarUrl={student.user.avatarUrl}
+            gender={student.profile?.gender}
+            name={student.user.fullName}
+            size="xl"
+            className="ring-2 ring-slate-100"
+          />
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                {student.user.fullName}
-              </h2>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                <ProgramBadge program={student.program} showIcon />
-                <span className="text-gray-300">·</span>
-                <span>{student.user.email}</span>
-                {student.user.phone && (
-                  <>
-                    <span className="text-gray-300">·</span>
-                    <span>{student.user.phone}</span>
-                  </>
-                )}
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-extrabold text-slate-900">
+                  {student.user.fullName}
+                </h2>
+                <ProgramBadge program={student.program} showIcon size="sm" />
               </div>
-              <p className="mt-0.5 text-xs text-gray-400">
-                Kayıt: {formatDate(student.createdAt)}
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                {student.user.phone && (
+                  <span className="font-bold text-slate-800">
+                    {student.user.phone}
+                  </span>
+                )}
+                <span className="text-slate-300">·</span>
+                <span className="font-medium text-slate-600">
+                  {student.user.email}
+                </span>
+                <span className="text-slate-300">·</span>
+                <span className="text-slate-500">
+                  Danışman:{" "}
+                  <strong className="text-[#1e3a8a]">{cleanAdvisorText}</strong>
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Kayıt Tarihi: {formatDate(student.createdAt)}
               </p>
             </div>
 
             {/* Action buttons */}
             <div className="flex flex-wrap items-center gap-2 mr-8">
               {student.user.phone && (
-                <>
-                  <a
-                    href={`tel:${student.user.phone}`}
-                    className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors"
-                  >
-                    <PhoneCall className="h-3.5 w-3.5 text-amber-400" />
-                    Telefon Aç
-                  </a>
-                  <a
-                    href={`https://wa.me/90${cleanWaPhone}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" />
-                    WhatsApp
-                  </a>
-                </>
+                <a
+                  href={`https://wa.me/90${cleanWaPhone}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition-colors shadow-xs"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
               )}
               <button
                 type="button"
                 onClick={() => setShowEmailModal(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-[#1e3a8a] px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-800 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 transition-colors shadow-xs"
               >
-                <Mail className="h-3.5 w-3.5 text-sky-300" />
+                <Mail className="h-4 w-4 text-sky-300" />
                 Mail Gönder
               </button>
               <button
                 onClick={() => window.print()}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-xs"
               >
-                <Printer className="h-3.5 w-3.5" />
+                <Printer className="h-4 w-4" />
                 Yazdır
               </button>
             </div>
