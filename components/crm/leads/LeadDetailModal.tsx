@@ -25,6 +25,8 @@ import {
   Wallet,
   Lock,
   ChevronDown,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { CRMLeadRow, CRMAdvisorNote, Program } from "@/types/crm";
@@ -60,45 +62,100 @@ function cleanAdvisorLabel(rawName?: string | null): string {
   return rawName.replace(/\s*\(\s*Danışman\s*\)/gi, "").trim();
 }
 
-function getBadgeStyleForSource(sourceOrTitle: string): { style: string; icon: string } {
+function getBadgeStyleForSource(
+  sourceOrTitle: string,
+  content = "",
+): { style: string; icon: React.ElementType; label: string } {
   const s = sourceOrTitle.toLowerCase();
+  const c = content.toLowerCase();
+
   if (s.includes("kayıt")) {
-    return { style: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: "🎉" };
+    return {
+      style: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      icon: CheckCircle2,
+      label: sourceOrTitle,
+    };
   }
   if (s.includes("ulaşıldı") || s.includes("görüşüldü")) {
-    return { style: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: "📞" };
+    return {
+      style: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      icon: PhoneCall,
+      label: sourceOrTitle,
+    };
   }
   if (s.includes("ilgili") || s.includes("ilgileniyor")) {
-    return { style: "bg-blue-50 text-blue-700 border-blue-200", icon: "⭐" };
+    return {
+      style: "bg-blue-50 text-blue-700 border-blue-200",
+      icon: Sparkles,
+      label: sourceOrTitle,
+    };
   }
   if (s.includes("meşgul") || s.includes("sonra ara")) {
-    return { style: "bg-amber-50 text-amber-700 border-amber-200", icon: "⏳" };
+    return {
+      style: "bg-amber-50 text-amber-700 border-amber-200",
+      icon: Clock,
+      label: sourceOrTitle,
+    };
   }
   if (s.includes("ulaşılamadı") || s.includes("cevap yok")) {
-    return { style: "bg-rose-50 text-rose-700 border-rose-200", icon: "📵" };
+    return {
+      style: "bg-rose-50 text-rose-700 border-rose-200",
+      icon: PhoneMissed,
+      label: sourceOrTitle,
+    };
   }
   if (s.includes("ilgilenmiyor")) {
-    return { style: "bg-slate-100 text-slate-700 border-slate-200", icon: "⛔" };
+    return {
+      style: "bg-slate-100 text-slate-700 border-slate-200",
+      icon: Ban,
+      label: sourceOrTitle,
+    };
   }
-  if (s.includes("whatsapp")) {
-    return { style: "bg-emerald-50 text-emerald-800 border-emerald-200", icon: "💬" };
+  if (s.includes("whatsapp") || c.includes("whatsapp")) {
+    return {
+      style: "bg-emerald-50 text-emerald-800 border-emerald-200",
+      icon: MessageCircle,
+      label: s === "log" ? "WhatsApp Logu" : sourceOrTitle,
+    };
   }
-  if (s.includes("e-posta") || s.includes("mail")) {
-    return { style: "bg-sky-50 text-sky-700 border-sky-200", icon: "✉️" };
+  if (
+    s.includes("e-posta") ||
+    s.includes("mail") ||
+    c.includes("e-posta") ||
+    c.includes("mail")
+  ) {
+    return {
+      style: "bg-sky-50 text-sky-700 border-sky-200",
+      icon: Mail,
+      label: s === "log" ? "E-Posta Logu" : sourceOrTitle,
+    };
   }
   if (s.includes("profil") || s.includes("bütçe")) {
-    return { style: "bg-purple-50 text-purple-700 border-purple-200", icon: "💰" };
+    return {
+      style: "bg-purple-50 text-purple-700 border-purple-200",
+      icon: Wallet,
+      label: sourceOrTitle,
+    };
   }
   if (s.includes("vize") || s.includes("evrak")) {
-    return { style: "bg-indigo-50 text-indigo-700 border-indigo-200", icon: "📁" };
+    return {
+      style: "bg-indigo-50 text-indigo-700 border-indigo-200",
+      icon: FileText,
+      label: sourceOrTitle,
+    };
   }
   if (s.includes("özel")) {
-    return { style: "bg-slate-100 text-slate-700 border-slate-200", icon: "🔒" };
+    return {
+      style: "bg-slate-100 text-slate-700 border-slate-200",
+      icon: Lock,
+      label: sourceOrTitle,
+    };
   }
-  if (s === "log" || s.startsWith("log")) {
-    return { style: "bg-amber-50 text-amber-800 border-amber-200", icon: "⚡" };
-  }
-  return { style: "bg-slate-100 text-slate-700 border-slate-200", icon: "📝" };
+  return {
+    style: "bg-slate-100 text-slate-700 border-slate-200",
+    icon: MessageSquare,
+    label: s === "log" ? "İletişim Logu" : sourceOrTitle,
+  };
 }
 
 function isSingleLineLogItem(sourceOrTitle: string, content: string): boolean {
@@ -161,7 +218,10 @@ function parseLeadNotes(
     const bracketMatch = block.match(/^\[([^\]]+)\]:\s*([\s\S]*)$/);
     if (bracketMatch) {
       const header = bracketMatch[1].trim();
-      const content = bracketMatch[2].trim() || "—";
+      const content = (bracketMatch[2].trim() || "—")
+        .replace(/^---\s*/, "")
+        .replace(/\s*---$/, "")
+        .trim();
 
       if (header.includes("·")) {
         const parts = header.split("·").map((p) => p.trim());
@@ -374,6 +434,7 @@ export function LeadDetailModal({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<string>(lead.program);
   const [isPending, startTransition] = useTransition();
+  const [hideLogs, setHideLogs] = useState(false);
 
   const [isOutcomeOpen, setIsOutcomeOpen] = useState(false);
   const outcomeDropdownRef = useRef<HTMLDivElement>(null);
@@ -415,6 +476,9 @@ export function LeadDetailModal({
   }, [editState]);
 
   const parsedItems = parseLeadNotes(localNotes, lead);
+  const displayedItems = hideLogs
+    ? parsedItems.filter((item) => !item.isLog)
+    : parsedItems;
 
   function handleOutcomeChange(val: string) {
     setSelectedOutcome(val);
@@ -626,53 +690,87 @@ export function LeadDetailModal({
           <div className="grid flex-1 grid-cols-1 lg:grid-cols-12 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
             {/* SOL KOLON (7/12 — Yarıdan Geniş): SADECE Yukarıdan Aşağıya Not & Log Akışı */}
             <div className="lg:col-span-7 flex flex-col overflow-hidden bg-slate-50/40 p-5">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2.5">
                 <h3 className="text-sm font-bold text-[#0f172a]">
                   Görüşme Detayı &amp; İletişim Logları
                 </h3>
+
+                {/* Logları Gizle / Göster Easy Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setHideLogs(!hideLogs)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all border",
+                    hideLogs
+                      ? "bg-[#1e3a8a] text-white border-[#1e3a8a] shadow-2xs"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100",
+                  )}
+                >
+                  {hideLogs ? (
+                    <>
+                      <Eye className="h-3.5 w-3.5 text-sky-300" />
+                      Sadece Notlar
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="h-3.5 w-3.5 text-slate-400" />
+                      Logları Gizle
+                    </>
+                  )}
+                </button>
+
                 <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                  {parsedItems.length} Kayıt
+                  {displayedItems.length} Kayıt
                 </span>
               </div>
 
               <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {parsedItems.length === 0 ? (
+                {displayedItems.length === 0 ? (
                   <div className="flex h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-slate-400">
                     <FileText className="h-6 w-6 mb-1.5 text-slate-300" />
                     <p className="text-xs font-medium">
-                      Henüz kayıtlı görüşme veya iletişim logu bulunmuyor.
+                      {hideLogs
+                        ? "Kayıtlı görüşme notu bulunmuyor (Loglar gizlendi)."
+                        : "Henüz kayıtlı görüşme veya iletişim logu bulunmuyor."}
                     </p>
                   </div>
                 ) : (
-                  parsedItems.map((item) => {
-                    const badgeInfo = getBadgeStyleForSource(item.sourceOrTitle);
-                    const displayTitle =
-                      item.sourceOrTitle === "LOG"
-                        ? "İletişim Logu"
-                        : item.sourceOrTitle;
+                  displayedItems.map((item) => {
+                    const badgeMeta = getBadgeStyleForSource(
+                      item.sourceOrTitle,
+                      item.content,
+                    );
+                    const BadgeIcon = badgeMeta.icon;
 
-                    // Single-line log style (automated communication event)
-                    if (item.isLog) {
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-slate-50/70 px-3.5 py-1.5 text-xs text-slate-700 shadow-2xs hover:border-slate-300 transition-colors"
-                        >
-                          <div className="flex items-center gap-2 min-w-0 pr-2">
+                    return (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          "rounded-xl border transition-colors",
+                          item.isLog
+                            ? "border-slate-200/90 bg-slate-50/70 p-2.5 shadow-2xs hover:border-slate-300"
+                            : "border-slate-200 bg-white p-3 shadow-2xs hover:border-slate-300",
+                        )}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span
                               className={cn(
-                                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold shrink-0",
-                                badgeInfo.style,
+                                "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-bold shrink-0",
+                                badgeMeta.style,
                               )}
                             >
-                              <span>{badgeInfo.icon}</span>
-                              <span>{displayTitle}</span>
+                              <BadgeIcon className="h-3 w-3" />
+                              {badgeMeta.label}
                             </span>
-                            <span className="truncate text-slate-800 font-medium text-[11px]">
-                              {item.content}
-                            </span>
+                            {item.isLog && (
+                              <span className="text-[11px] font-medium text-slate-700">
+                                · {item.content}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2.5 shrink-0 text-[10px] text-slate-500">
+
+                          <div className="flex items-center gap-3 shrink-0 text-[10px] text-slate-500">
                             <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
                               <User className="h-3 w-3 text-slate-400" />
                               {item.author}
@@ -683,39 +781,14 @@ export function LeadDetailModal({
                             </span>
                           </div>
                         </div>
-                      );
-                    }
 
-                    // Rich card style for all notes & call outcomes
-                    return (
-                      <div
-                        key={item.id}
-                        className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-2xs hover:border-slate-300 transition-colors"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 mb-1.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={cn(
-                                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold",
-                                badgeInfo.style,
-                              )}
-                            >
-                              <span>{badgeInfo.icon}</span>
-                              <span>{displayTitle}</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
-                              <User className="h-3 w-3 text-slate-400" />
-                              {item.author}
-                            </span>
+                        {!item.isLog && (
+                          <div className="mt-2 pt-2 border-t border-slate-100">
+                            <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
+                              {item.content}
+                            </p>
                           </div>
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 tabular-nums">
-                            <Clock className="h-3 w-3 text-slate-400" />
-                            {item.dateTime}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
-                          {item.content}
-                        </p>
+                        )}
                       </div>
                     );
                   })
@@ -884,27 +957,17 @@ export function LeadDetailModal({
                 </div>
               </div>
 
-              {/* 2. ALT: Hızlı İletişim Kanalları (İlk Dizayndaki Tam Genişlik Kartlar) */}
-              <div className="space-y-2.5">
+              {/* 2. ALT: Hızlı İletişim Kanalları */}
+              <div className="space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Hızlı İletişim Kanalları
                 </p>
 
-                {/* WhatsApp Kartı: Soldan Sağa Tam Genişlik */}
-                <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
-                      <MessageCircle className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-emerald-950">
-                        Hızlı WhatsApp İletişimi
-                      </p>
-                      <p className="text-sm font-semibold text-emerald-800">
-                        {lead.phone}
-                      </p>
-                    </div>
-                  </div>
+                {/* WhatsApp Kartı */}
+                <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2.5 transition-all">
+                  <span className="text-sm font-bold text-emerald-950 font-mono">
+                    {lead.phone}
+                  </span>
                   <a
                     href={`https://wa.me/90${cleanWaPhone}`}
                     target="_blank"
@@ -919,21 +982,11 @@ export function LeadDetailModal({
                   </a>
                 </div>
 
-                {/* E-Posta Kartı: Soldan Sağa Tam Genişlik */}
-                <div className="flex items-center justify-between rounded-2xl border border-sky-200 bg-sky-50/70 p-3.5 transition-all">
-                  <div className="flex items-center gap-3 min-w-0 pr-2">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1e3a8a] text-white shadow-xs">
-                      <Mail className="h-5 w-5 text-sky-300" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-sky-950">
-                        E-Posta Gönderimi
-                      </p>
-                      <p className="text-sm font-semibold text-sky-900 truncate">
-                        {lead.email}
-                      </p>
-                    </div>
-                  </div>
+                {/* E-Posta Kartı */}
+                <div className="flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50/70 px-3.5 py-2.5 transition-all">
+                  <span className="text-sm font-semibold text-sky-950 truncate max-w-[220px]">
+                    {lead.email}
+                  </span>
                   <button
                     type="button"
                     onClick={() => setShowEmailModal(true)}
