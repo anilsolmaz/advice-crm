@@ -200,7 +200,7 @@ export default async function StudentHomePage() {
         <div className="rounded-2xl border-2 border-[#1e3a8a]/20 bg-blue-50/60 p-5 flex flex-wrap items-center justify-between gap-4">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#1e3a8a] block">
-              SİZE ÖZEL İŞ TEKLİFİ LİNKİ ATANDI (§4)
+              SİZE ÖZEL İŞ TEKLİFİ ATANDI
             </span>
             <h3 className="text-base font-black text-[#0f172a]">
               {student.watJobAssignments[0].job.jobTitle} (

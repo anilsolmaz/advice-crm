@@ -497,7 +497,7 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
 
                 <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
                   <span className="text-[10px] font-bold uppercase text-blue-800 block">
-                    DS-160 Formu Durumu (§3)
+                    DS-160 Formu Durumu
                   </span>
                   <p className="mt-1 font-black text-blue-950 text-sm">
                     {watDetail?.ds160Status === "COMPLETED"
@@ -513,7 +513,7 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
                 {/* WAT Accommodation Sold & Commission (§4 & §8) */}
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
                   <span className="text-[10px] font-bold uppercase text-emerald-800 block">
-                    WAT Konaklama Satışı &amp; Komisyon (§4 &amp; §8)
+                    WAT Konaklama Satışı &amp; Komisyon
                   </span>
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-1.5 font-bold text-slate-900">
@@ -605,7 +605,7 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
                 <div>
                   <h3 className="text-base font-bold text-[#0f172a] flex items-center gap-2">
                     <Languages className="h-5 w-5 text-emerald-600" />
-                    Dil Okulu 5 Aşama &amp; Gross / Net Fatura Takibi (§6)
+                    Dil Okulu Süreç &amp; Fatura Takibi
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Agreements, Agreements Signed, Gross Invoice, Net Invoice ve Letter of Acceptance (LOA) takibi.
@@ -1083,7 +1083,7 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
               <GraduationCap className="h-4 w-4 text-blue-600" />
-              Akademik Profil, Mezuniyet &amp; Çalışma Deneyimi (§6)
+              Akademik Profil, Mezuniyet &amp; Çalışma Deneyimi
             </h3>
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>

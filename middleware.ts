@@ -87,9 +87,9 @@ export async function middleware(request: NextRequest) {
   const hasSession = hasSupabaseUser || hasAdviceSession || hasUserId;
   const isAuthenticated = hasSession && !!roleCookie;
 
-  // ── 2. /login or root / — redirect only if genuinely authenticated with a valid session ──
-  if (pathname === LOGIN_PATH) {
-    // Only redirect away from /login if user has an active session
+  // ── 2. /login, /kurumsal-giris or root / — redirect only if genuinely authenticated with a valid session ──
+  if (pathname === LOGIN_PATH || pathname === "/kurumsal-giris") {
+    // Only redirect away from login if user has an active session
     if (hasSession && roleCookie) {
       const home = isStaff(roleCookie) ? STAFF_HOME : STUDENT_HOME;
       return NextResponse.redirect(new URL(home, request.url));
