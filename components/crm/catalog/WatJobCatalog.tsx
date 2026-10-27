@@ -1,377 +1,1009 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
   Briefcase,
   MapPin,
-  DollarSign,
   Users,
   Calendar,
-  Clock,
   Home,
-  Award,
   Search,
-  Filter,
   X,
-  ExternalLink,
+  Plus,
+  Link2,
   CheckCircle2,
-  Building,
+  XCircle,
+  Clock,
+  Trash2,
+  Copy,
+  Plane,
+  Utensils,
+  Bus,
+  Shirt,
+  Sparkles,
 } from "lucide-react";
+import {
+  createWatJob,
+  deleteWatJob,
+  createStudentJobLink,
+  type WatJobInput,
+} from "@/actions/crm/jobs";
+import { formatDate } from "@/lib/utils/date";
 
-export interface WatJobItem {
+export interface WatJobAssignmentSerialized {
   id: string;
-  employerName: string;
-  sponsor: "CIEE" | "AWA" | "UWT" | "InterExchange";
-  jobTitle: string;
-  hourlyRate: string;
-  location: string;
-  state: string;
-  availableSlots: number;
-  totalSlots: number;
-  startDate: string;
-  endDate: string;
-  weeklyHours: string;
-  englishLevel: "B1" | "B2" | "C1";
-  housingInfo: string;
-  housingCost: string;
-  description: string;
+  studentId: string;
+  studentName: string;
+  shareToken: string;
+  status: string;
+  studentNote: string | null;
+  respondedAt: string | Date | null;
+  createdAt: string | Date;
 }
 
-const JOBS_DATA: WatJobItem[] = [
-  {
-    id: "job-1",
-    employerName: "Wilderness Resort & Waterpark",
-    sponsor: "CIEE",
-    jobTitle: "Lifeguard & Pool Attendant",
-    hourlyRate: "$16.50 / saat",
-    location: "Wisconsin Dells",
-    state: "WI",
-    availableSlots: 8,
-    totalSlots: 20,
-    startDate: "15 Haziran 2026",
-    endDate: "15 Eylül 2026",
-    weeklyHours: "35 - 45 saat/hafta (Fazla Mesai 1.5x)",
-    englishLevel: "B2",
-    housingInfo: "İşveren tarafından sağlanan yurt tipi konaklama (2-3 kişilik odalar, Wi-Fi, mutfak)",
-    housingCost: "$120 / hafta",
-    description: "Amerika'nın en büyük kapalı su parkı kompleksinde cankurtaranlık pozisyonu. CIEE resmi sponsorluğunda Amerikan Kızılhaç cankurtaran sertifika eğitimi ücretsiz verilmektedir.",
-  },
-  {
-    id: "job-2",
-    employerName: "Premier Aquatics Inc.",
-    sponsor: "CIEE",
-    jobTitle: "Community Pool Lifeguard",
-    hourlyRate: "$17.00 / saat",
-    location: "Northern Virginia (Fairfax / Arlington)",
-    state: "VA",
-    availableSlots: 12,
-    totalSlots: 25,
-    startDate: "1 Haziran 2026",
-    endDate: "07 Eylül 2026",
-    weeklyHours: "40 - 50 saat/hafta",
-    englishLevel: "B2",
-    housingInfo: "Tam tefrişatlı apartman daireleri, havuza servis imkanı",
-    housingCost: "$135 / hafta",
-    description: "Washington D.C. metropol alanında yerleşim imkanı. Yüksek çalışma saati ve haftalık düzenli gelir.",
-  },
-  {
-    id: "job-3",
-    employerName: "Kalahari Resorts & Conventions",
-    sponsor: "AWA",
-    jobTitle: "Food & Beverage Attendant",
-    hourlyRate: "$15.50 / saat + Bahşiş",
-    location: "Sandusky",
-    state: "OH",
-    availableSlots: 5,
-    totalSlots: 15,
-    startDate: "10 Haziran 2026",
-    endDate: "10 Eylül 2026",
-    weeklyHours: "38 - 42 saat/hafta",
-    englishLevel: "B1",
-    housingInfo: "Kampüs içi personel lojmanı, yemek indirimi",
-    housingCost: "$110 / hafta",
-    description: "Afrika temalı resort otelde restoran ve servis ekibi. Bahşişlerle birlikte saatlik $22 seviyesine ulaşan gelir imkanı.",
-  },
-  {
-    id: "job-4",
-    employerName: "Morey's Piers & Beachfront Waterparks",
-    sponsor: "UWT",
-    jobTitle: "Ride Operator / Ride Attendant",
-    hourlyRate: "$16.00 / saat",
-    location: "Wildwood",
-    state: "NJ",
-    availableSlots: 10,
-    totalSlots: 30,
-    startDate: "20 Haziran 2026",
-    endDate: "20 Eylül 2026",
-    weeklyHours: "35 - 45 saat/hafta",
-    englishLevel: "B1",
-    housingInfo: "Okyanus kıyısına yürüme mesafesinde kiralık öğrenci evleri",
-    housingCost: "$130 / hafta",
-    description: "New Jersey sahilinde lunapark eğlence trenleri ve su kaydırakları işletme personeli. New York City ve Philadelphia'ya tren mesafesinde.",
-  },
-  {
-    id: "job-5",
-    employerName: "Grand Teton Lodge Company",
-    sponsor: "InterExchange",
-    jobTitle: "Hospitality & Guest Services",
-    hourlyRate: "$17.50 / saat",
-    location: "Moran (Yellowstone Region)",
-    state: "WY",
-    availableSlots: 4,
-    totalSlots: 10,
-    startDate: "05 Haziran 2026",
-    endDate: "25 Eylül 2026",
-    weeklyHours: "40 saat/hafta",
-    englishLevel: "C1",
-    housingInfo: "Milli park içi ahşap kabinler + 3 öğün yemek dahil",
-    housingCost: "$100 / hafta (Yemekler Dahil)",
-    description: "Dünyaca ünlü Grand Teton Milli Parkı içinde doğayla iç içe resepsiyon ve misafir karşılama pozisyonu. Yemeklerin konaklamaya dahil olması sebebiyle en yüksek net tasarruf sağlayan pozisyon.",
-  },
-];
+export interface WatJobRecord {
+  id: string;
+  sponsor: string;
+  program: string;
+  jobCategory: string;
+  jobTitle: string;
+  placementType: string;
+  location: string;
+  state: string | null;
+  arrivalAirport: string | null;
+  hourlyWage: string | number;
+  avgWorkingHours: number;
+  accommodationCost: string | number | null;
+  accommodationDeposit: string | number | null;
+  food: string | null;
+  transportation: string | null;
+  workApparel: string | null;
+  position: string | null;
+  genderPreference: string;
+  jobStartDate: string | Date;
+  jobEndDate: string | Date;
+  earlyLeaveInfo: string | null;
+  numPlacements: number;
+  filledPlacements: number;
+  bonus: string | null;
+  additionalInfo: string | null;
+  assignments?: WatJobAssignmentSerialized[];
+}
 
-export function WatJobCatalog() {
+interface Props {
+  initialJobs?: WatJobRecord[];
+  watStudents?: { id: string; fullName: string; email: string }[];
+}
+
+const SPONSORS = ["AWA", "UWT", "IEE", "Life Adventures", "CIEE", "Diğer"];
+const JOB_CATEGORIES = [
+  "Lifeguard",
+  "Hospitality",
+  "Amusement Park",
+  "Food & Beverage",
+  "Retail",
+  "Resort",
+  "Other",
+];
+const PLACEMENT_TYPES = ["Full Placement", "Self Placement", "Direct Placement"];
+const GENDER_PREFS = ["Males and Females", "Females Only", "Males Only"];
+
+export function WatJobCatalog({ initialJobs = [], watStudents = [] }: Props) {
   const [search, setSearch] = useState("");
   const [sponsorFilter, setSponsorFilter] = useState<string>("ALL");
-  const [stateFilter, setStateFilter] = useState<string>("ALL");
-  const [selectedJob, setSelectedJob] = useState<WatJobItem | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [selectedJob, setSelectedJob] = useState<WatJobRecord | null>(null);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(
+    watStudents[0]?.id || "",
+  );
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const filtered = JOBS_DATA.filter((j) => {
-    const matchesSearch =
-      j.employerName.toLowerCase().includes(search.toLowerCase()) ||
-      j.jobTitle.toLowerCase().includes(search.toLowerCase()) ||
-      j.location.toLowerCase().includes(search.toLowerCase());
-
-    const matchesSponsor = sponsorFilter === "ALL" || j.sponsor === sponsorFilter;
-    const matchesState = stateFilter === "ALL" || j.state === stateFilter;
-
-    return matchesSearch && matchesSponsor && matchesState;
+  const [newJob, setNewJob] = useState<WatJobInput>({
+    sponsor: "AWA",
+    program: "Work and Travel",
+    jobCategory: "Hospitality",
+    jobTitle: "",
+    placementType: "Full Placement",
+    location: "",
+    state: "",
+    arrivalAirport: "JFK - New York",
+    hourlyWage: 16.5,
+    avgWorkingHours: 38,
+    accommodationCost: 125,
+    accommodationDeposit: 200,
+    food: "Vardiyada 1 Öğün Ücretsiz",
+    transportation: "Yürüme Mesafesi / Bisiklet",
+    workApparel: "İşveren Tişört Verir, Siyah Pantolon",
+    position: "",
+    genderPreference: "Males and Females",
+    jobStartDate: "2026-06-15",
+    jobEndDate: "2026-09-15",
+    earlyLeaveInfo: "1 Eylül sonrası okul belgesiyle uygun",
+    numPlacements: 6,
+    bonus: "$250 Sezon Sonu Tamamlama Bonusu",
+    additionalInfo: "",
   });
+
+  const filtered = initialJobs.filter((j) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      !q ||
+      j.jobTitle.toLowerCase().includes(q) ||
+      j.location.toLowerCase().includes(q) ||
+      (j.position && j.position.toLowerCase().includes(q));
+    const matchesSponsor =
+      sponsorFilter === "ALL" || j.sponsor === sponsorFilter;
+    const matchesCategory =
+      categoryFilter === "ALL" || j.jobCategory === categoryFilter;
+    return matchesSearch && matchesSponsor && matchesCategory;
+  });
+
+  function handleCreateJob(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    startTransition(async () => {
+      const res = await createWatJob(newJob);
+      if (!res.success) {
+        setFormError(res.error);
+      } else {
+        setIsAddOpen(false);
+      }
+    });
+  }
+
+  function handleDeleteJob(jobId: string) {
+    if (!confirm("Bu işi iş havuzundan silmek istediğinize emin misiniz?"))
+      return;
+    startTransition(async () => {
+      await deleteWatJob(jobId);
+      setSelectedJob(null);
+    });
+  }
+
+  function handleAssignLink(jobId: string) {
+    if (!selectedStudentId) {
+      alert("Lütfen önce listeden bir öğrenci seçin.");
+      return;
+    }
+    startTransition(async () => {
+      const res = await createStudentJobLink(jobId, selectedStudentId);
+      if (res.success && res.shareUrl) {
+        const fullUrl =
+          typeof window !== "undefined"
+            ? `${window.location.origin}${res.shareUrl}`
+            : res.shareUrl;
+        setGeneratedLink(fullUrl);
+      } else if (!res.success) {
+        alert(res.error);
+      }
+    });
+  }
 
   return (
     <div className="space-y-6">
-      {/* ── Toolbar & Filters ────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-        {/* Search */}
+      {/* ── Top Action & Filter Bar ──────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="relative min-w-[240px] flex-1">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="İşveren, pozisyon veya şehir ara…"
+            placeholder="İşveren, pozisyon veya eyalet ara…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 py-2 pl-10 pr-4 text-xs text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-xl border border-slate-200 py-2 pl-10 pr-4 text-xs sm:text-sm text-slate-800 focus:border-[#0f172a] focus:outline-none"
           />
         </div>
 
-        {/* Sponsor Filter */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400 font-semibold">Sponsor:</span>
-          <select
-            value={sponsorFilter}
-            onChange={(e) => setSponsorFilter(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700"
-          >
-            <option value="ALL">Tüm Sponsorlar</option>
-            <option value="CIEE">CIEE</option>
-            <option value="AWA">AWA</option>
-            <option value="UWT">UWT</option>
-            <option value="InterExchange">InterExchange</option>
-          </select>
-        </div>
+        <select
+          value={sponsorFilter}
+          onChange={(e) => setSponsorFilter(e.target.value)}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+        >
+          <option value="ALL">Tüm Sponsorlar</option>
+          {SPONSORS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
 
-        {/* State Filter */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400 font-semibold">Eyalet:</span>
-          <select
-            value={stateFilter}
-            onChange={(e) => setStateFilter(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700"
-          >
-            <option value="ALL">Tüm Eyaletler</option>
-            <option value="VA">Virginia (VA)</option>
-            <option value="WI">Wisconsin (WI)</option>
-            <option value="OH">Ohio (OH)</option>
-            <option value="NJ">New Jersey (NJ)</option>
-            <option value="WY">Wyoming (WY)</option>
-          </select>
-        </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+        >
+          <option value="ALL">Tüm Kategoriler</option>
+          {JOB_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          onClick={() => setIsAddOpen(true)}
+          className="flex items-center gap-1.5 rounded-xl bg-[#0f172a] px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#1e3a8a] transition-colors"
+        >
+          <Plus className="h-4 w-4 text-sky-400" />
+          Yeni İş Ekle (22 Kriter)
+        </button>
       </div>
 
       {/* ── Job Cards Grid ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((job) => (
-          <div
-            key={job.id}
-            onClick={() => setSelectedJob(job)}
-            className="cursor-pointer rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-200 flex flex-col justify-between group"
-          >
-            <div className="space-y-3">
-              {/* Header: Sponsor tag & Wage badge */}
-              <div className="flex items-center justify-between">
-                <span className="rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-1 text-[11px] font-bold text-blue-700">
-                  {job.sponsor} Sponsorlu
-                </span>
-                <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                  {job.hourlyRate}
-                </span>
-              </div>
-
-              {/* Title & Employer */}
-              <div>
-                <h3 className="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                  {job.jobTitle}
-                </h3>
-                <p className="text-xs font-semibold text-gray-700 mt-1 flex items-center gap-1">
-                  <Building className="h-3.5 w-3.5 text-gray-400" />
-                  {job.employerName}
-                </p>
-              </div>
-
-              {/* Location & Slots */}
-              <div className="pt-2 border-t border-gray-100 space-y-2 text-xs text-gray-600">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 text-rose-500" />
-                    {job.location}, {job.state}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filtered.map((job) => {
+          const remaining = Math.max(0, job.numPlacements - job.filledPlacements);
+          return (
+            <div
+              key={job.id}
+              onClick={() => {
+                setSelectedJob(job);
+                setGeneratedLink(null);
+              }}
+              className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md hover:border-[#1e3a8a] transition-all flex flex-col justify-between group"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-lg bg-[#0f172a] px-2.5 py-1 text-[11px] font-bold text-white">
+                    {job.sponsor} · {job.jobCategory}
                   </span>
-                  <span className="flex items-center gap-1 font-semibold text-blue-600">
-                    <Users className="h-3.5 w-3.5" />
-                    {job.availableSlots} / {job.totalSlots} Kontenjan
+                  <span className="rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-black text-emerald-700">
+                    ${String(job.hourlyWage)} / saat
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-gray-400">
-                  <span>İngilizce: <strong className="text-gray-700">{job.englishLevel}</strong></span>
-                  <span>{job.startDate.split(" ")[0]} - {job.endDate}</span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 group-hover:text-[#1e3a8a] transition-colors">
+                    {job.jobTitle}
+                  </h3>
+                  <p className="text-xs font-semibold text-slate-600 mt-0.5">
+                    Pozisyon: {job.position || job.jobTitle} ({job.placementType})
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 font-medium">
+                      <MapPin className="h-3.5 w-3.5 text-rose-500" />
+                      {job.location} {job.state ? `(${job.state})` : ""}
+                    </span>
+                    <span className="flex items-center gap-1 font-bold text-[#1e3a8a]">
+                      <Users className="h-3.5 w-3.5" />
+                      {remaining} / {job.numPlacements} Kontenjan
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Ort. Saat: {job.avgWorkingHours}s/hf</span>
+                    <span>
+                      Konaklama:{" "}
+                      {job.accommodationCost
+                        ? `$${String(job.accommodationCost)}/hf`
+                        : "Belirtilmedi"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Cinsiyet: {job.genderPreference}</span>
+                    <span>
+                      {formatDate(job.jobStartDate)} - {formatDate(job.jobEndDate)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Bottom Button */}
-            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-blue-600 group-hover:underline">
-              <span>İş ve Konaklama Detayları</span>
-              <ExternalLink className="h-3.5 w-3.5" />
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#1e3a8a]">
+                <span>22 Kriter Detayı &amp; Öğrenci Linki Oluştur</span>
+                <Link2 className="h-4 w-4" />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* ── Interactive Detail Modal ────────────────────────────────────── */}
-      {selectedJob && (
+      {/* ── ADD NEW WAT JOB MODAL (ALL 22 FIELDS FROM §4) ─────────────────── */}
+      {isAddOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="flex h-full max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-gray-100 p-6 bg-slate-50/50">
+          <div className="flex h-full max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-[#0f172a] px-6 py-4 text-white">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-lg bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
-                    {selectedJob.sponsor} Resmi Sponsor
-                  </span>
-                  <span className="text-xs text-gray-500 font-mono">
-                    ID: {selectedJob.id.toUpperCase()}
-                  </span>
-                </div>
-                <h2 className="text-xl font-bold text-gray-900 mt-1">
-                  {selectedJob.jobTitle}
+                <h2 className="text-base font-bold">
+                  Work and Travel İş Havuzuna Yeni İş Ekle (22 Standart Alan)
                 </h2>
-                <p className="text-xs font-semibold text-gray-700 mt-0.5">
-                  {selectedJob.employerName} · {selectedJob.location}, {selectedJob.state}
+                <p className="text-xs text-slate-300">
+                  Eklenen işler anında katalogda listelenir ve öğrencilere özel onay linki olarak gönderilebilir.
                 </p>
               </div>
-
               <button
-                onClick={() => setSelectedJob(null)}
-                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                type="button"
+                onClick={() => setIsAddOpen(false)}
+                className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-gray-700">
-              {/* Highlight Stats Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
-                  <span className="text-emerald-600 block text-[10px] uppercase font-bold">Saatlik Ücret</span>
-                  <span className="text-base font-extrabold text-emerald-800">{selectedJob.hourlyRate}</span>
+            <form
+              onSubmit={handleCreateJob}
+              className="flex-1 overflow-y-auto p-6 space-y-4 text-xs"
+            >
+              {formError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-700 font-semibold">
+                  {formError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    1. Sponsor *
+                  </label>
+                  <select
+                    value={newJob.sponsor}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, sponsor: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  >
+                    {SPONSORS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="rounded-xl bg-blue-50 border border-blue-100 p-3">
-                  <span className="text-blue-600 block text-[10px] uppercase font-bold">Çalışma Saati</span>
-                  <span className="text-xs font-bold text-blue-800">{selectedJob.weeklyHours}</span>
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    2. Program
+                  </label>
+                  <input
+                    type="text"
+                    value={newJob.program}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, program: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
                 </div>
 
-                <div className="rounded-xl bg-purple-50 border border-purple-100 p-3">
-                  <span className="text-purple-600 block text-[10px] uppercase font-bold">İngilizce Şartı</span>
-                  <span className="text-base font-extrabold text-purple-800">{selectedJob.englishLevel} Seviyesi</span>
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    3. Job Category *
+                  </label>
+                  <select
+                    value={newJob.jobCategory}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, jobCategory: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  >
+                    {JOB_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="rounded-xl bg-amber-50 border border-amber-100 p-3">
-                  <span className="text-amber-600 block text-[10px] uppercase font-bold">Kalan Kontenjan</span>
-                  <span className="text-base font-extrabold text-amber-800">{selectedJob.availableSlots} / {selectedJob.totalSlots}</span>
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block font-bold text-slate-700">
+                    4. Job / Employer Name (İşveren &amp; Başlık) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Örn: Cedar Point Amusement Park - Ride Operator"
+                    value={newJob.jobTitle}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, jobTitle: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    5. Type of Placement
+                  </label>
+                  <select
+                    value={newJob.placementType}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, placementType: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  >
+                    {PLACEMENT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    6. Location (Şehir / Bölge) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Örn: Sandusky, Ohio"
+                    value={newJob.location}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, location: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    Eyalet Kodu (State)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="OH, WI, VA, NJ, FL..."
+                    value={newJob.state}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, state: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    7. Arrival Airport (Varış Havalimanı)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Örn: CLE - Cleveland / JFK"
+                    value={newJob.arrivalAirport}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, arrivalAirport: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    8. Hourly Wage ($ / Saat) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    required
+                    value={newJob.hourlyWage}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, hourlyWage: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    9. Avg. Working Hours (Haftalık Saat)
+                  </label>
+                  <input
+                    type="number"
+                    value={newJob.avgWorkingHours}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, avgWorkingHours: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    10. Accommodation Cost ($ / Hafta)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={newJob.accommodationCost ?? ""}
+                    onChange={(e) =>
+                      setNewJob({
+                        ...newJob,
+                        accommodationCost: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    11. Accommodation Deposit ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={newJob.accommodationDeposit ?? ""}
+                    onChange={(e) =>
+                      setNewJob({
+                        ...newJob,
+                        accommodationDeposit: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    12. Food (Yemek İmkanı)
+                  </label>
+                  <input
+                    type="text"
+                    value={newJob.food}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, food: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    13. Transportation (Ulaşım)
+                  </label>
+                  <input
+                    type="text"
+                    value={newJob.transportation}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, transportation: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    14. Work Apparel (İş Kıyafeti)
+                  </label>
+                  <input
+                    type="text"
+                    value={newJob.workApparel}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, workApparel: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    15. Position (Görev Tanımı)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Lifeguard / Server / Housekeeper"
+                    value={newJob.position}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, position: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    16. Gender Preference
+                  </label>
+                  <select
+                    value={newJob.genderPreference}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, genderPreference: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  >
+                    {GENDER_PREFS.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    17. Job Start Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newJob.jobStartDate}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, jobStartDate: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    18. Job End Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newJob.jobEndDate}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, jobEndDate: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    19. Early Leave (Erken Ayrılış)
+                  </label>
+                  <input
+                    type="text"
+                    value={newJob.earlyLeaveInfo}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, earlyLeaveInfo: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700">
+                    20. Num. of Placements (Kontenjan)
+                  </label>
+                  <input
+                    type="number"
+                    value={newJob.numPlacements}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, numPlacements: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block font-bold text-slate-700">
+                    21. Bonus
+                  </label>
+                  <input
+                    type="text"
+                    value={newJob.bonus}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, bonus: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
+                </div>
+
+                <div className="sm:col-span-3">
+                  <label className="mb-1 block font-bold text-slate-700">
+                    22. Additional Info (Ek Açıklamalar)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={newJob.additionalInfo}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, additionalInfo: e.target.value })
+                    }
+                    placeholder="Mülakat şartları, bölge olanakları, ikinci iş imkanı vb."
+                    className="w-full rounded-xl border border-slate-200 p-3"
+                  />
                 </div>
               </div>
 
-              {/* Dates */}
-              <div className="rounded-2xl border border-gray-100 p-4 space-y-2">
-                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-blue-600" />
-                  Sözleşme & Çalışma Tarihleri
-                </h4>
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="text-gray-400 block">İşe Başlama (Start Date):</span>
-                    <span className="font-bold text-gray-800 text-sm">{selectedJob.startDate}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400 block">İş Bitişi (End Date):</span>
-                    <span className="font-bold text-gray-800 text-sm">{selectedJob.endDate}</span>
-                  </div>
-                </div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 font-bold text-slate-600"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="rounded-xl bg-[#0f172a] px-5 py-2 font-bold text-white hover:bg-[#1e3a8a]"
+                >
+                  {isPending ? "Kaydediliyor…" : "İşi Havuza Kaydet"}
+                </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-              {/* Housing */}
-              <div className="rounded-2xl border border-gray-100 p-4 space-y-2">
-                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <Home className="h-4 w-4 text-emerald-600" />
-                  Konaklama ve Yaşam Şartları
-                </h4>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {selectedJob.housingInfo}
+      {/* ── JOB DETAIL + STUDENT LINK GENERATOR MODAL (§4) ────────────────── */}
+      {selectedJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="flex h-full max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-slate-200 bg-[#0f172a] p-5 text-white">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-sky-500/20 border border-sky-400/30 px-2.5 py-0.5 text-xs font-bold text-sky-300">
+                    {selectedJob.sponsor} · {selectedJob.jobCategory}
+                  </span>
+                  <span className="text-xs text-slate-300">
+                    {selectedJob.placementType}
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-white mt-1">
+                  {selectedJob.jobTitle}
+                </h2>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  {selectedJob.location}{" "}
+                  {selectedJob.state ? `(${selectedJob.state})` : ""} · Varış
+                  Havalimanı: {selectedJob.arrivalAirport || "Belirtilmedi"}
                 </p>
-                <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-gray-500 font-medium">Haftalık Konaklama Ücreti:</span>
-                  <span className="font-bold text-gray-900 text-sm">{selectedJob.housingCost}</span>
-                </div>
               </div>
 
-              {/* Job Description */}
-              <div className="rounded-2xl border border-gray-100 p-4 space-y-2">
-                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <Briefcase className="h-4 w-4 text-purple-600" />
-                  İş Tanımı ve Görev Sorumlulukları
-                </h4>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {selectedJob.description}
-                </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteJob(selectedJob.id)}
+                  className="rounded-lg bg-red-500/20 p-2 text-red-300 hover:bg-red-600 hover:text-white transition-colors"
+                  title="İşi Sil"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedJob(null)}
+                  className="rounded-lg p-2 text-slate-300 hover:bg-slate-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="border-t border-gray-100 p-4 flex items-center justify-between bg-slate-50">
-              <span className="text-[11px] text-gray-500">
-                Sponsor Onaylı İş Teklifi Formu (Job Offer Agreement)
-              </span>
-              <button
-                onClick={() => {
-                  alert(`"${selectedJob.employerName} - ${selectedJob.jobTitle}" pozisyonu öğrenci iş mülakat listesine eklendi.`);
-                  setSelectedJob(null);
-                }}
-                className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                Bu İşe Öğrenci Ata / Mülakata Ekle
-              </button>
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-slate-700">
+              {/* 4 Key Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+                  <span className="text-emerald-700 block text-[10px] uppercase font-bold">
+                    Saatlik Ücret
+                  </span>
+                  <span className="text-lg font-black text-emerald-900">
+                    ${String(selectedJob.hourlyWage)} / saat
+                  </span>
+                </div>
+                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3">
+                  <span className="text-blue-700 block text-[10px] uppercase font-bold">
+                    Ort. Çalışma Saati
+                  </span>
+                  <span className="text-lg font-black text-blue-900">
+                    {selectedJob.avgWorkingHours} saat/hf
+                  </span>
+                </div>
+                <div className="rounded-xl bg-purple-50 border border-purple-200 p-3">
+                  <span className="text-purple-700 block text-[10px] uppercase font-bold">
+                    Haftalık Konaklama
+                  </span>
+                  <span className="text-lg font-black text-purple-900">
+                    {selectedJob.accommodationCost
+                      ? `$${String(selectedJob.accommodationCost)}`
+                      : "Yok"}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
+                  <span className="text-amber-700 block text-[10px] uppercase font-bold">
+                    Kontenjan &amp; Cinsiyet
+                  </span>
+                  <span className="text-sm font-black text-amber-900 block">
+                    {selectedJob.numPlacements - selectedJob.filledPlacements} /{" "}
+                    {selectedJob.numPlacements} Kişi
+                  </span>
+                  <span className="text-[10px] text-amber-800">
+                    {selectedJob.genderPreference}
+                  </span>
+                </div>
+              </div>
+
+              {/* Full 22-Field Breakdown Table */}
+              <div className="rounded-2xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50/50">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                    Pozisyon (Position)
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {selectedJob.position || selectedJob.jobTitle}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                    İşe Başlama &amp; Bitiş
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {formatDate(selectedJob.jobStartDate)} –{" "}
+                    {formatDate(selectedJob.jobEndDate)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                    Erken Ayrılış (Early Leave)
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {selectedJob.earlyLeaveInfo || "Belirtilmedi"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                    Depozito (Deposit)
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {selectedJob.accommodationDeposit
+                      ? `$${String(selectedJob.accommodationDeposit)}`
+                      : "Yok"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                    Yemek (Food)
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {selectedJob.food || "Belirtilmedi"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                    Ulaşım (Transportation)
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {selectedJob.transportation || "Belirtilmedi"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                    İş Kıyafeti (Work Apparel)
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {selectedJob.workApparel || "Belirtilmedi"}
+                  </span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                    Sezon Sonu Bonusu (Bonus)
+                  </span>
+                  <span className="font-bold text-emerald-700">
+                    {selectedJob.bonus || "Yok"}
+                  </span>
+                </div>
+                {selectedJob.additionalInfo && (
+                  <div className="sm:col-span-3 pt-2 border-t border-slate-200">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                      Ek Bilgiler (Additional Info)
+                    </span>
+                    <p className="text-slate-700 mt-0.5 leading-relaxed">
+                      {selectedJob.additionalInfo}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── STUDENT-SPECIFIC JOB LINK GENERATOR (§4 [P1]) ─────────── */}
+              <div className="rounded-2xl border-2 border-[#1e3a8a]/20 bg-blue-50/40 p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-black text-[#0f172a] flex items-center gap-2">
+                      <Link2 className="h-4 w-4 text-[#1e3a8a]" />
+                      Öğrenciye Özel İş Linki Oluştur (Kabul / Red Takibi)
+                    </h4>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Seçtiğiniz öğrenciye özel benzersiz bir link üretilir. Öğrenci bu linkten tüm 22 iş kriterini görür ve Onayla / Reddet butonuna basar.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <select
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="flex-1 min-w-[220px] rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-900"
+                  >
+                    <option value="">— Öğrenci Seçin —</option>
+                    {watStudents.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.fullName} ({st.email})
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    disabled={isPending || !selectedStudentId}
+                    onClick={() => handleAssignLink(selectedJob.id)}
+                    className="flex items-center gap-2 rounded-xl bg-[#0f172a] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#1e3a8a] disabled:opacity-50"
+                  >
+                    <Link2 className="h-4 w-4 text-sky-400" />
+                    {isPending
+                      ? "Link Üretiliyor…"
+                      : "Öğrenciye Özel İş Linki Üret & Gönder"}
+                  </button>
+                </div>
+
+                {generatedLink && (
+                  <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs font-mono text-emerald-900 break-all">
+                      {generatedLink}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedLink);
+                        }}
+                        className="flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-800"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        Kopyala
+                      </button>
+                      <a
+                        href={generatedLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg bg-white border border-emerald-300 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
+                      >
+                        Önizle →
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* Existing Assigned Links for this Job */}
+                {selectedJob.assignments && selectedJob.assignments.length > 0 && (
+                  <div className="pt-3 border-t border-slate-200 space-y-2">
+                    <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Bu İş İçin Gönderilen Öğrenci Linkleri &amp; Yanıt Durumu
+                    </h5>
+                    <div className="space-y-1.5">
+                      {selectedJob.assignments.map((asg) => (
+                        <div
+                          key={asg.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white border border-slate-200 px-3.5 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900">
+                              {asg.studentName}
+                            </span>
+                            {asg.status === "ACCEPTED" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                                <CheckCircle2 className="h-3 w-3" /> ONAYLADI
+                              </span>
+                            ) : asg.status === "DECLINED" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-800">
+                                <XCircle className="h-3 w-3" /> REDDETTİ
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                                <Clock className="h-3 w-3" /> YANIT BEKLENİYOR
+                              </span>
+                            )}
+                          </div>
+                          <a
+                            href={`/job-offer/${asg.shareToken}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-bold text-[#1e3a8a] hover:underline"
+                          >
+                            /job-offer/{asg.shareToken} →
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

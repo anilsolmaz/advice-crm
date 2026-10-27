@@ -13,32 +13,51 @@ export default async function LeadsPage() {
   const canViewAll = user.advisorProfile?.canViewAllLeads ?? true;
 
   const whereClause =
-    user.role === "ADMIN"
+    user.role === "ADMIN" || user.role === "ACCOUNTING"
       ? {}
-      : canViewAll
+      : canViewAll && allowed.length > 0
       ? { program: { in: allowed } }
-      : { advisorId: user.id, program: { in: allowed } };
+      : canViewAll
+      ? {}
+      : { advisorId: user.id };
 
-  const rawLeads = await prisma.lead.findMany({
-    where: whereClause,
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      status: true,
-      program: true,
-      source: true,
-      advisorId: true,
-      createdAt: true,
-    },
-  });
+  const [rawLeads, advisors] = await Promise.all([
+    prisma.lead.findMany({
+      where: whereClause,
+      orderBy: [{ followUpAt: "asc" }, { createdAt: "desc" }],
+      include: {
+        advisor: {
+          select: { id: true, fullName: true },
+        },
+      },
+    }),
+    prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "ADVISOR"] }, isActive: true },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: "asc" },
+    }),
+  ]);
 
   const leads: CRMLeadRow[] = rawLeads.map((l) => ({
-    ...l,
+    id: l.id,
+    fullName: l.fullName,
+    email: l.email,
+    phone: l.phone,
+    status: l.status,
+    program: l.program,
+    source: l.source,
+    advisorId: l.advisorId,
+    advisorName: l.advisor?.fullName ?? null,
+    sponsor: l.sponsor,
+    city: l.city,
+    visaStatus: l.visaStatus,
+    notes: l.notes,
+    followUpAt: l.followUpAt,
+    lastContactedAt: l.lastContactedAt,
+    lastCallOutcome: l.lastCallOutcome,
+    callCount: l.callCount,
     createdAt: l.createdAt,
   }));
 
-  return <LeadsPageClient initialLeads={leads} />;
+  return <LeadsPageClient initialLeads={leads} advisors={advisors} />;
 }

@@ -47,15 +47,15 @@ export function PortalNavbar({ user, pendingApprovalsCount }: Props) {
         <Link href="/anasayfa" className="flex items-center gap-3 py-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/advice-logo.svg"
-            alt="Advice Yurtdışı Eğitim"
+            src="/backpax-logo.svg"
+            alt="BackPax Global Education"
             className="h-10 w-auto object-contain"
           />
-          <div className="hidden sm:block border-l border-gray-200 pl-3">
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">
-              Öğrenci Portalı
+          <div className="hidden sm:block border-l border-slate-200 pl-3">
+            <span className="rounded-full bg-[#0f172a] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+              Boarding Pass · Öğrenci Portalı
             </span>
-            <p className="text-[11px] text-gray-500 mt-0.5">Hoş geldin, {user.fullName}</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Hoş geldin, {user.fullName}</p>
           </div>
         </Link>
 

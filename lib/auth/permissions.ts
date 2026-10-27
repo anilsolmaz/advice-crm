@@ -1,5 +1,5 @@
 // lib/auth/permissions.ts
-// Granular permission and program access control helpers
+// Granular permission and program access control helpers for BackPax CRM
 import type { Program } from "@prisma/client";
 import type { AuthUser } from "@/lib/auth/session";
 
@@ -14,6 +14,7 @@ export const ALL_PROGRAMS: Program[] = [
 /**
  * Checks if a user has access to a specific program.
  * ADMIN has access to all programs unconditionally.
+ * ACCOUNTING only accesses accounting module by default unless granted programs.
  */
 export function hasProgramAccess(user: AuthUser | null | undefined, program: Program): boolean {
   if (!user) return false;
@@ -41,6 +42,7 @@ export function getAccessiblePrograms(user: AuthUser | null | undefined): Progra
 export function canManageApprovals(user: AuthUser | null | undefined): boolean {
   if (!user) return false;
   if (user.role === "ADMIN") return true;
+  if (user.role === "ACCOUNTING") return false;
   return user.advisorProfile?.canManageApprovals ?? true;
 }
 
@@ -50,6 +52,7 @@ export function canManageApprovals(user: AuthUser | null | undefined): boolean {
 export function canManageMarketing(user: AuthUser | null | undefined): boolean {
   if (!user) return false;
   if (user.role === "ADMIN") return true;
+  if (user.role === "ACCOUNTING") return false;
   return user.advisorProfile?.canManageMarketing ?? true;
 }
 
@@ -58,7 +61,7 @@ export function canManageMarketing(user: AuthUser | null | undefined): boolean {
  */
 export function canExportData(user: AuthUser | null | undefined): boolean {
   if (!user) return false;
-  if (user.role === "ADMIN") return true;
+  if (user.role === "ADMIN" || user.role === "ACCOUNTING") return true;
   return user.advisorProfile?.canExportData ?? false;
 }
 
@@ -69,4 +72,31 @@ export function canViewAllLeads(user: AuthUser | null | undefined): boolean {
   if (!user) return false;
   if (user.role === "ADMIN") return true;
   return user.advisorProfile?.canViewAllLeads ?? true;
+}
+
+/**
+ * Checks if the user can access and manage the Accounting module.
+ */
+export function canManageAccounting(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  if (user.role === "ADMIN" || user.role === "ACCOUNTING") return true;
+  return user.advisorProfile?.canManageAccounting ?? false;
+}
+
+/**
+ * Checks if the user can manage the WAT Job Pool.
+ */
+export function canManageJobPool(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  if (user.role === "ADMIN") return true;
+  return user.advisorProfile?.canManageJobPool ?? true;
+}
+
+/**
+ * Checks if the user can manage the Partner School Pool.
+ */
+export function canManagePartnerPool(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  if (user.role === "ADMIN") return true;
+  return user.advisorProfile?.canManagePartnerPool ?? true;
 }

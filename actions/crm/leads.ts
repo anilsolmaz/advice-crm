@@ -2,7 +2,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/auth/session";
@@ -11,10 +10,10 @@ import crypto from "crypto";
 import type { LeadStatus, LeadSource, Program } from "@prisma/client";
 
 export type LeadFormState =
-  | { success: true }
-  | { success: false; error: string };
+  | { success: true; duplicateWarning?: string }
+  | { success: false; error: string; isDuplicate?: boolean };
 
-// ── createLead ────────────────────────────────────────────────────────────────
+// ── createLead (with Duplicate Lead Check - Section 2 & 10) ───────────────────
 
 export async function createLead(
   _prev: LeadFormState,
@@ -22,16 +21,42 @@ export async function createLead(
 ): Promise<LeadFormState> {
   const advisor = await requireStaff();
 
-  const fullName = formData.get("fullName") as string;
-  const email = formData.get("email") as string;
-  const phone = formData.get("phone") as string;
+  const fullName = (formData.get("fullName") as string)?.trim();
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
+  const phone = (formData.get("phone") as string)?.trim();
   const program = formData.get("program") as Program;
-  const source = (formData.get("source") as LeadSource) ?? "OTHER";
-  const notes = formData.get("notes") as string | null;
+  const source = ((formData.get("source") as LeadSource) || "WEBSITE") as LeadSource;
+  const sponsor = (formData.get("sponsor") as string)?.trim() || null;
+  const city = (formData.get("city") as string)?.trim() || null;
+  const visaStatus = (formData.get("visaStatus") as string)?.trim() || null;
+  const followUpAtRaw = formData.get("followUpAt") as string | null;
+  const notes = (formData.get("notes") as string)?.trim() || null;
+  const forceCreate = formData.get("forceCreate") === "true";
 
   if (!fullName || !email || !phone || !program) {
-    return { success: false, error: "Zorunlu alanları doldurun." };
+    return { success: false, error: "İsim, e-posta, telefon ve program zorunludur." };
   }
+
+  // Duplicate check by email or normalized phone
+  const normalizedPhone = phone.replace(/\s+/g, "");
+  const existingLead = await prisma.lead.findFirst({
+    where: {
+      OR: [
+        { email },
+        { phone: { contains: normalizedPhone.slice(-10) } },
+      ],
+    },
+  });
+
+  if (existingLead && !forceCreate) {
+    return {
+      success: false,
+      isDuplicate: true,
+      error: `Mükerrer Kayıt Uyarısı: "${existingLead.fullName}" (${existingLead.phone} / ${existingLead.email}) zaten sistemde kayıtlı!`,
+    };
+  }
+
+  const assignedAdvisorId = (formData.get("advisorId") as string) || advisor.id;
 
   await prisma.lead.create({
     data: {
@@ -40,13 +65,18 @@ export async function createLead(
       phone,
       program,
       source,
+      sponsor,
+      city,
+      visaStatus,
+      followUpAt: followUpAtRaw ? new Date(followUpAtRaw) : null,
       notes,
-      advisorId: advisor.id,
+      advisorId: assignedAdvisorId,
       status: "INTERESTED",
     },
   });
 
   revalidatePath("/leads");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -64,10 +94,11 @@ export async function updateLeadStatus(
   });
 
   revalidatePath("/leads");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
-// ── updateLead ────────────────────────────────────────────────────────────────
+// ── updateLead (Full Lead Edit - Section 2 [P1]) ──────────────────────────────
 
 export async function updateLead(
   leadId: string,
@@ -76,18 +107,132 @@ export async function updateLead(
 ): Promise<LeadFormState> {
   await requireStaff();
 
-  const fullName = formData.get("fullName") as string;
-  const email = formData.get("email") as string;
-  const phone = formData.get("phone") as string;
+  const fullName = (formData.get("fullName") as string)?.trim();
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
+  const phone = (formData.get("phone") as string)?.trim();
   const notes = formData.get("notes") as string | null;
-  const source = formData.get("source") as LeadSource;
+  const source = formData.get("source") as LeadSource | null;
+  const status = formData.get("status") as LeadStatus | null;
+  const program = formData.get("program") as Program | null;
+  const sponsor = formData.get("sponsor") as string | null;
+  const city = formData.get("city") as string | null;
+  const visaStatus = formData.get("visaStatus") as string | null;
+  const advisorId = formData.get("advisorId") as string | null;
+  const followUpAtRaw = formData.get("followUpAt") as string | null;
 
   await prisma.lead.update({
     where: { id: leadId },
-    data: { fullName, email, phone, notes, source },
+    data: {
+      ...(fullName ? { fullName } : {}),
+      ...(email ? { email } : {}),
+      ...(phone ? { phone } : {}),
+      notes,
+      ...(source ? { source } : {}),
+      ...(status ? { status } : {}),
+      ...(program ? { program } : {}),
+      sponsor: sponsor !== undefined ? sponsor || null : undefined,
+      city: city !== undefined ? city || null : undefined,
+      visaStatus: visaStatus !== undefined ? visaStatus || null : undefined,
+      ...(advisorId ? { advisorId } : {}),
+      followUpAt:
+        followUpAtRaw !== null
+          ? followUpAtRaw
+            ? new Date(followUpAtRaw)
+            : null
+          : undefined,
+    },
   });
 
   revalidatePath("/leads");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// ── logLeadCall (Call Result + Next Follow-up Date - Section 2 [P1]) ──────────
+
+export async function logLeadCall(
+  leadId: string,
+  outcome: string,
+  noteText: string,
+  nextFollowUpAt?: string | null,
+  newStatus?: LeadStatus,
+): Promise<LeadFormState> {
+  const advisor = await requireStaff();
+
+  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!lead) return { success: false, error: "Aday bulunamadı." };
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const OUTCOME_LABELS: Record<string, string> = {
+    REACHED: "Ulaşıldı / Görüşüldü",
+    UNREACHABLE: "Ulaşılamadı",
+    BUSY: "Meşgul / Tekrar Aranacak",
+    INTERESTED: "İlgileniyor",
+    UNINTERESTED: "İlgilenmiyor",
+    REGISTERED: "Kayıt Oldu",
+  };
+
+  const outcomeLabel = OUTCOME_LABELS[outcome] || outcome;
+  const logLine = `[${dateStr} · ${advisor.fullName} · ${outcomeLabel}]: ${noteText || "Arama kaydı girildi."}`;
+  const updatedNotes = lead.notes ? `${lead.notes}\n\n${logLine}` : logLine;
+
+  const followUpDate = nextFollowUpAt ? new Date(nextFollowUpAt) : null;
+
+  await prisma.$transaction([
+    prisma.leadCallLog.create({
+      data: {
+        leadId,
+        advisorId: advisor.id,
+        outcome,
+        notes: noteText || null,
+        nextFollowUpAt: followUpDate,
+      },
+    }),
+    prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        lastContactedAt: now,
+        lastCallOutcome: outcome,
+        callCount: { increment: 1 },
+        followUpAt: followUpDate,
+        notes: updatedNotes,
+        ...(newStatus ? { status: newStatus } : {}),
+      },
+    }),
+  ]);
+
+  revalidatePath("/leads");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// ── postponeLeadFollowUp (1-Click Follow-Up Postpone Button) ──────────────────
+
+export async function postponeLeadFollowUp(
+  leadId: string,
+  daysToAdd: number,
+): Promise<LeadFormState> {
+  await requireStaff();
+
+  const nextDate = new Date();
+  nextDate.setDate(nextDate.getDate() + daysToAdd);
+  nextDate.setHours(10, 0, 0, 0);
+
+  await prisma.lead.update({
+    where: { id: leadId },
+    data: { followUpAt: nextDate },
+  });
+
+  revalidatePath("/leads");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -142,14 +287,6 @@ export async function deleteLead(leadId: string): Promise<LeadFormState> {
 
 // ── convertLeadToStudent (Kesin Kayıt / Aktar) ────────────────────────────────
 
-/**
- * Converts a Lead to an active Student record:
- *  1. Creates a Supabase Auth user (via admin client)
- *  2. Creates the users row with STUDENT role
- *  3. Creates the Student + StudentProfile skeleton
- *  4. Updates Lead.status → REGISTERED, Lead.convertedAt = now
- *  5. Sends invitation email via Supabase Auth
- */
 export async function convertLeadToStudent(
   leadId: string,
 ): Promise<LeadFormState> {
@@ -162,12 +299,14 @@ export async function convertLeadToStudent(
   }
 
   let authUserId: string | null = null;
-  const isMockSupabase = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("example.supabase.co");
+  const isMockSupabase =
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL.includes("example.supabase.co");
 
   if (!isMockSupabase) {
     try {
       const supabaseAdmin = createSupabaseAdminClient();
-      const { data: authData, error: authError } =
+      const { data: authData } =
         await supabaseAdmin.auth.admin.inviteUserByEmail(lead.email, {
           data: { full_name: lead.fullName },
         });
@@ -180,16 +319,12 @@ export async function convertLeadToStudent(
   }
 
   if (!authUserId) {
-    // Local PostgreSQL fallback: generate UUID
     authUserId = crypto.randomUUID();
   }
 
-  // Pre-generate standard default password hash (Password123!) for the student
   const defaultPasswordHash = await bcrypt.hash("Password123!", 10);
 
-  // Step 2–4: Create DB records in a transaction
   await prisma.$transaction(async (tx) => {
-    // users row (mirrors auth.users)
     await tx.user.create({
       data: {
         id: authUserId!,
@@ -202,42 +337,51 @@ export async function convertLeadToStudent(
       },
     });
 
-    // student record
     const student = await tx.student.create({
       data: {
         userId: authUserId,
         leadId: lead.id,
-        advisorId: advisor.id,
+        advisorId: lead.advisorId || advisor.id,
         program: lead.program,
         isActive: true,
       },
     });
 
-    // empty profile skeleton — student will complete via portal
     await tx.studentProfile.create({
       data: {
         studentId: student.id,
         nationalId: "",
-        dateOfBirth: new Date("2000-01-01"),
-        placeOfBirth: "",
+        dateOfBirth: new Date("2002-01-01"),
+        placeOfBirth: lead.city || "",
+        city: lead.city || null,
       },
     });
 
-    // mark lead as registered
+    if (lead.program === "WORK_AND_TRAVEL") {
+      await tx.watDetail.create({
+        data: {
+          studentId: student.id,
+          sponsorName: lead.sponsor || null,
+          currentStage: "PRE_REGISTRATION",
+          ds160Status: "NOT_STARTED",
+        },
+      });
+    }
+
     await tx.lead.update({
       where: { id: leadId },
       data: {
         status: "REGISTERED",
         convertedAt: new Date(),
+        followUpAt: null,
       },
     });
 
-    // append immutable advisor note
     await tx.advisorNote.create({
       data: {
         studentId: student.id,
         authorId: advisor.id,
-        note: `Lead kaydından öğrenciye dönüştürüldü. Davetiye e-postası ${lead.email} adresine gönderildi.`,
+        note: `Lead kaydından öğrenciye dönüştürüldü. Öğrenci portalı giriş bilgileri oluşturuldu (${lead.email}).`,
       },
     });
   });
@@ -247,7 +391,7 @@ export async function convertLeadToStudent(
   return { success: true };
 }
 
-// ── bulkImportLeads (Toplu Excel / CSV İçe Aktarma) ──────────────────────────
+// ── bulkImportLeads ───────────────────────────────────────────────────────────
 
 export interface BulkLeadRowInput {
   fullName: string;
@@ -255,6 +399,8 @@ export interface BulkLeadRowInput {
   phone: string;
   program: Program;
   source?: LeadSource;
+  sponsor?: string;
+  city?: string;
   notes?: string;
 }
 
@@ -318,6 +464,8 @@ export async function bulkImportLeads(
             phone,
             program,
             source,
+            sponsor: row.sponsor || existing.sponsor,
+            city: row.city || existing.city,
             notes: notes
               ? `${existing.notes ? existing.notes + " | " : ""}Toplu Aktarım: ${notes}`
               : existing.notes,
@@ -332,6 +480,8 @@ export async function bulkImportLeads(
             phone,
             program,
             source,
+            sponsor: row.sponsor || null,
+            city: row.city || null,
             notes: notes ? `Toplu Aktarım: ${notes}` : "Toplu Excel/CSV içe aktarımı ile eklendi.",
             status: "INTERESTED",
             advisorId: advisor.id,
@@ -355,4 +505,3 @@ export async function bulkImportLeads(
     errors,
   };
 }
-

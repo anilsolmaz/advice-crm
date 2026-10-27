@@ -1,10 +1,9 @@
 // app/(crm)/layout.tsx
-// CRM shell layout — wraps all staff/advisor pages.
-// Renders Sidebar + Header + main content area.
+// CRM shell layout — wraps all staff/advisor/accounting pages.
 import { requireStaff } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/crm/navigation/Sidebar";
-import Header from "@/components/crm/navigation/Header";
+import Header, { type HeaderNotificationItem } from "@/components/crm/navigation/Header";
 import type { StagedApprovalItem } from "@/components/crm/approvals/PendingApprovalsDrawer";
 
 export default async function CRMLayout({
@@ -14,19 +13,25 @@ export default async function CRMLayout({
 }) {
   const user = await requireStaff();
 
-  // Query pending approvals for the staff header bell badge & drawer
-  const pendingApprovalsRaw = await prisma.pendingApproval.findMany({
-    where: { status: "PENDING" },
-    include: {
-      student: {
-        include: {
-          user: true,
+  const [pendingApprovalsRaw, notificationsRaw] = await Promise.all([
+    prisma.pendingApproval.findMany({
+      where: { status: "PENDING" },
+      include: {
+        student: {
+          include: {
+            user: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 25,
-  });
+      orderBy: { createdAt: "desc" },
+      take: 25,
+    }),
+    prisma.notification.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 15,
+    }),
+  ]);
 
   const pendingApprovals: StagedApprovalItem[] = pendingApprovalsRaw.map((a) => ({
     id: a.id,
@@ -41,14 +46,30 @@ export default async function CRMLayout({
     createdAt: a.createdAt,
   }));
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* ── Fixed sidebar ──────────────────────────────────────────── */}
-      <Sidebar userRole={user.role} allowedPrograms={user.advisorProfile?.allowedPrograms} />
+  const notifications: HeaderNotificationItem[] = notificationsRaw.map((n) => ({
+    id: n.id,
+    type: n.type,
+    title: n.title,
+    message: n.message,
+    href: n.linkUrl,
+    isRead: n.isRead,
+    createdAt: n.createdAt,
+  }));
 
-      {/* ── Main column ───────────────────────────────────────────── */}
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      <Sidebar
+        userRole={user.role}
+        allowedPrograms={user.advisorProfile?.allowedPrograms}
+        canManageAccounting={user.advisorProfile?.canManageAccounting}
+      />
+
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header user={user} pendingApprovals={pendingApprovals} />
+        <Header
+          user={user}
+          pendingApprovals={pendingApprovals}
+          notifications={notifications}
+        />
         <main className="flex-1 overflow-y-auto px-6 py-6">{children}</main>
       </div>
     </div>

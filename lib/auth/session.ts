@@ -1,13 +1,6 @@
 // lib/auth/session.ts
 // ─────────────────────────────────────────────────────────────────────────────
 // Server-side session helpers (Server Components, Server Actions, Route Handlers).
-//
-// Design notes:
-//   • getSession()     → reads Supabase JWT from cookie (fallback)
-//   • getCurrentUser() → verifies advice_session JWT / x-user-id from PostgreSQL
-//   • requireRole()    → wraps getCurrentUser() + redirect if unauthorized
-//
-// All redirect() calls are Next.js 14 server-side redirects (throw internally).
 // ─────────────────────────────────────────────────────────────────────────────
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
@@ -19,6 +12,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import {
   STAFF_HOME,
+  ACCOUNTING_HOME,
   STUDENT_HOME,
   LOGIN_PATH,
   isStaff,
@@ -37,8 +31,15 @@ export type AuthUser = {
   email: string;
   fullName: string;
   role: Role;
+  customRoleId?: string | null;
   avatarUrl: string | null;
   isActive: boolean;
+  customRole?: {
+    id: string;
+    name: string;
+    slug: string;
+    permissions: Record<string, boolean>;
+  } | null;
   advisorProfile?: {
     department: string | null;
     bio: string | null;
@@ -47,6 +48,10 @@ export type AuthUser = {
     canManageMarketing: boolean;
     canExportData: boolean;
     canViewAllLeads: boolean;
+    canManageAccounting: boolean;
+    canManageJobPool: boolean;
+    canManagePartnerPool: boolean;
+    monthlyTargetRegistrations: number;
   } | null;
 };
 
@@ -55,8 +60,17 @@ const USER_AUTH_SELECT = {
   email: true,
   fullName: true,
   role: true,
+  customRoleId: true,
   avatarUrl: true,
   isActive: true,
+  customRole: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      permissions: true,
+    },
+  },
   advisorProfile: {
     select: {
       department: true,
@@ -66,6 +80,10 @@ const USER_AUTH_SELECT = {
       canManageMarketing: true,
       canExportData: true,
       canViewAllLeads: true,
+      canManageAccounting: true,
+      canManageJobPool: true,
+      canManagePartnerPool: true,
+      monthlyTargetRegistrations: true,
     },
   },
 } as const;
@@ -76,15 +94,8 @@ export type SessionResult =
 
 // ── Core helpers ─────────────────────────────────────────────────────────────
 
-/**
- * Returns the Supabase Session (JWT) for the current request.
- * No database query — reads the cookie only.
- * Returns null if unauthenticated or the token has expired.
- */
 export async function getSession(): Promise<Session | null> {
   const supabase = createSupabaseServerClient();
-  // getUser() re-validates the JWT against the Supabase Auth server
-  // (more secure than getSession() which trusts the local cookie)
   const {
     data: { user },
     error,
@@ -92,16 +103,10 @@ export async function getSession(): Promise<Session | null> {
 
   if (error || !user) return null;
 
-  // Re-fetch session for the full Session object (needed for access_token)
   const { data } = await supabase.auth.getSession();
   return data.session;
 }
 
-/**
- * Fetches the full AuthUser record from the PostgreSQL `users` table for the
- * currently authenticated session (via advice_session JWT, x-user-id, or Supabase).
- * Returns null if unauthenticated.
- */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const cookieStore = cookies();
 
@@ -173,21 +178,12 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 // ── Route guards (server-side redirects) ─────────────────────────────────────
 
-/**
- * Requires an authenticated session.
- * Redirects to /login if not authenticated.
- */
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user) redirect(LOGIN_PATH);
   return user;
 }
 
-/**
- * Requires the user to have one of the specified roles.
- * @param allowedRoles  - Roles that are permitted.
- * @param unauthorizedRedirect - Where to send the user if role check fails.
- */
 export async function requireRole(
   allowedRoles: Role[],
   unauthorizedRedirect: string,
@@ -200,11 +196,26 @@ export async function requireRole(
 }
 
 /**
- * Requires ADMIN or ADVISOR role.
+ * Requires ADMIN, ADVISOR, or ACCOUNTING role.
  * Students hitting CRM pages are sent to the portal home.
  */
 export async function requireStaff(): Promise<AuthUser> {
-  return requireRole(["ADMIN", "ADVISOR"], STUDENT_HOME);
+  return requireRole(["ADMIN", "ADVISOR", "ACCOUNTING"], STUDENT_HOME);
+}
+
+/**
+ * Requires ADMIN or ACCOUNTING role (or advisor with canManageAccounting).
+ */
+export async function requireAccounting(): Promise<AuthUser> {
+  const user = await requireStaff();
+  if (
+    user.role === "ADMIN" ||
+    user.role === "ACCOUNTING" ||
+    user.advisorProfile?.canManageAccounting
+  ) {
+    return user;
+  }
+  redirect(STAFF_HOME);
 }
 
 /**
@@ -217,19 +228,13 @@ export async function requireStudent(): Promise<AuthUser> {
 
 /**
  * Requires ADMIN role specifically.
- * Non-admins are redirected to the CRM dashboard.
  */
 export async function requireAdmin(): Promise<AuthUser> {
   return requireRole(["ADMIN"], STAFF_HOME);
 }
 
-// ── Post-login role-based redirect ───────────────────────────────────────────
-
-/**
- * Determines the correct home path for a user based on their role.
- * Used after login and OAuth callback.
- */
 export function getHomePathForRole(role: Role): string {
+  if (role === "ACCOUNTING") return ACCOUNTING_HOME;
   if (isStaff(role)) return STAFF_HOME;
   if (isStudent(role)) return STUDENT_HOME;
   return LOGIN_PATH;

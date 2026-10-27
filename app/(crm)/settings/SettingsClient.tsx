@@ -27,6 +27,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { createStaffUser, toggleUserStatus, type UserActionState } from "@/actions/crm/users";
+import { createCustomRole, deleteCustomRole } from "@/actions/crm/roles";
 import { sendTestMessage, type IntegrationStatus } from "@/actions/crm/integrations";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { formatDate } from "@/lib/utils/date";
@@ -51,12 +52,16 @@ function SubmitButton() {
 
 interface Props {
   initialUsers: any[];
+  customRoles?: any[];
   currentUserId: string;
   integrationStatus: IntegrationStatus;
 }
 
-export default function SettingsClient({ initialUsers, currentUserId, integrationStatus }: Props) {
-  const [activeTab, setActiveTab] = useState<"USERS" | "INTEGRATIONS" | "CHECKLIST">("USERS");
+export default function SettingsClient({ initialUsers, customRoles = [], currentUserId, integrationStatus }: Props) {
+  const [activeTab, setActiveTab] = useState<"USERS" | "ROLES" | "INTEGRATIONS" | "CHECKLIST">("USERS");
+  const [roleName, setRoleName] = useState("");
+  const [roleDesc, setRoleDesc] = useState("");
+  const [roleBase, setRoleBase] = useState<"ADVISOR" | "ACCOUNTING" | "ADMIN">("ADVISOR");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPermissionsUser, setEditingPermissionsUser] = useState<any | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -124,12 +129,25 @@ export default function SettingsClient({ initialUsers, currentUserId, integratio
           className={cn(
             "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors",
             activeTab === "USERS"
-              ? "border-blue-600 text-blue-600"
+              ? "border-[#0f172a] text-[#0f172a]"
               : "border-transparent text-gray-500 hover:text-gray-800"
           )}
         >
           <Users className="h-4 w-4" />
           Personel & Yetkiler ({initialUsers.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("ROLES")}
+          className={cn(
+            "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors",
+            activeTab === "ROLES"
+              ? "border-[#0f172a] text-[#0f172a]"
+              : "border-transparent text-gray-500 hover:text-gray-800"
+          )}
+        >
+          <Shield className="h-4 w-4" />
+          Roller & Yetki Tanımlama ({customRoles.length})
         </button>
         <button
           type="button"
@@ -286,6 +304,121 @@ export default function SettingsClient({ initialUsers, currentUserId, integratio
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 1.5: ROLES & CUSTOM RBAC (§1) ────────────────────────────── */}
+      {activeTab === "ROLES" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <h3 className="text-base font-bold text-[#0f172a]">
+              Tanımlı Sistem &amp; Özel Roller (Dinamik RBAC)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {customRoles.map((cr: any) => (
+                <div
+                  key={cr.id}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between space-y-3"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 text-sm">
+                        {cr.name}
+                      </span>
+                      <span className="rounded bg-[#0f172a] px-2 py-0.5 text-[10px] font-bold text-white">
+                        {cr.baseRole}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {cr.description || "Özel tanımlı yetki rolü"}
+                    </p>
+                  </div>
+                  {!cr.isSystem && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        startTransition(async () => {
+                          await deleteCustomRole(cr.id);
+                        });
+                      }}
+                      className="self-end text-xs font-bold text-red-600 hover:underline"
+                    >
+                      Rolü Sil
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 text-xs">
+            <h3 className="text-sm font-bold text-[#0f172a]">
+              Yeni Rol &amp; Yetki Grubu Oluştur
+            </h3>
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">
+                Rol Adı *
+              </label>
+              <input
+                type="text"
+                value={roleName}
+                onChange={(e) => setRoleName(e.target.value)}
+                placeholder="Örn: Vize Operasyon Uzmanı / Muhasebe"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">
+                Temel Erişim Seviyesi
+              </label>
+              <select
+                value={roleBase}
+                onChange={(e) => setRoleBase(e.target.value as any)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 bg-white"
+              >
+                <option value="ADVISOR">Danışman (Advisor)</option>
+                <option value="ACCOUNTING">Muhasebe (Accounting)</option>
+                <option value="ADMIN">Yönetici (Admin)</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">
+                Açıklama
+              </label>
+              <textarea
+                rows={3}
+                value={roleDesc}
+                onChange={(e) => setRoleDesc(e.target.value)}
+                placeholder="Bu rolün erişebileceği ekranlar ve yetkiler…"
+                className="w-full rounded-xl border border-slate-200 p-2.5"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={isPending || !roleName}
+              onClick={() => {
+                startTransition(async () => {
+                  const res = await createCustomRole({
+                    name: roleName,
+                    description: roleDesc,
+                    baseRole: roleBase,
+                    permissions: {
+                      canManageAccounting: roleBase === "ACCOUNTING",
+                      canManageJobPool: true,
+                      canManagePartnerPool: true,
+                    },
+                  });
+                  if (res.success) {
+                    setRoleName("");
+                    setRoleDesc("");
+                  }
+                });
+              }}
+              className="w-full rounded-xl bg-[#0f172a] py-2.5 font-bold text-white hover:bg-[#1e3a8a]"
+            >
+              Yeni Rolü Kaydet
+            </button>
           </div>
         </div>
       )}
@@ -627,6 +760,7 @@ export default function SettingsClient({ initialUsers, currentUserId, integratio
                     className="w-full rounded-xl border border-gray-200 p-2.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none bg-white"
                   >
                     <option value="ADVISOR">Danışman (Advisor)</option>
+                    <option value="ACCOUNTING">Muhasebe (Accounting)</option>
                     <option value="ADMIN">Yönetici (Admin)</option>
                   </select>
                 </div>

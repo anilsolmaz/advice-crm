@@ -46,6 +46,12 @@ async function main() {
   const passwordHash = await bcrypt.hash(DEFAULT_TEST_PASSWORD, 10);
 
   // Clean existing tables in reverse dependency order
+  await prisma.notification.deleteMany();
+  await prisma.accountingEntry.deleteMany();
+  await prisma.academicApplication.deleteMany();
+  await prisma.watJobAssignment.deleteMany();
+  await prisma.watJob.deleteMany();
+  await prisma.leadCallLog.deleteMany();
   await prisma.advisorNote.deleteMany();
   await prisma.pendingApproval.deleteMany();
   await prisma.document.deleteMany();
@@ -58,9 +64,13 @@ async function main() {
   await prisma.visaDetail.deleteMany();
   await prisma.studentProfile.deleteMany();
   await prisma.student.deleteMany();
+  await prisma.summerBooking.deleteMany();
+  await prisma.summerAllocation.deleteMany();
+  await prisma.partnerSchool.deleteMany();
   await prisma.lead.deleteMany();
   await prisma.advisorProfile.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.customRole.deleteMany();
 
   // =========================================================================
   // 1. CORE USERS: Yönetici & Danışmanlar
@@ -965,6 +975,636 @@ async function main() {
   });
 
   console.log("✅ 5 adet zengin kayıtlı öğrenci (Student) oluşturuldu.");
+
+  // =========================================================================
+  // 4. BACKPAX V2 MODÜLLERİ: Muhasebe Rolü, WAT İş Havuzu, Partner Okullar,
+  //    Akademik Başvurular, Yaz Okulu Allocation/Booking ve Muhasebe Defteri
+  // =========================================================================
+
+  // Muhasebe Kullanıcısı (Section 1 & 8)
+  const accountingUserId = "00000000-0000-0000-0000-000000000009";
+  await prisma.user.create({
+    data: {
+      id: accountingUserId,
+      email: "muhasebe@adviceyed.com",
+      fullName: "Selim Kaya (Muhasebe & Finans)",
+      phone: "0532 100 0009",
+      passwordHash,
+      role: Role.ACCOUNTING,
+      isActive: true,
+      advisorProfile: {
+        create: {
+          department: "Finans & Muhasebe Departmanı",
+          bio: "Kıdemli Finans ve Tahsilat Uzmanı",
+          allowedPrograms: [],
+          canManageApprovals: false,
+          canManageMarketing: false,
+          canExportData: true,
+          canViewAllLeads: false,
+          canManageAccounting: true,
+        },
+      },
+    },
+  });
+
+  // Dinamik Roller (CustomRole - Section 1)
+  await prisma.customRole.createMany({
+    data: [
+      {
+        name: "Süper Yönetici (Admin)",
+        slug: "super-admin",
+        description: "Tüm modüller, muhasebe, rol tanımlama ve sistem ayarlarına tam erişim.",
+        baseRole: Role.ADMIN,
+        isSystem: true,
+        permissions: {
+          allModules: true,
+          canManageAccounting: true,
+          canManageJobPool: true,
+          canManagePartnerPool: true,
+          canExportData: true,
+        },
+      },
+      {
+        name: "Work and Travel Danışmanı",
+        slug: "wat-advisor",
+        description: "WAT adayları, öğrencileri, iş havuzu, DS-160 ve vize takibi yetkisi.",
+        baseRole: Role.ADVISOR,
+        isSystem: true,
+        permissions: {
+          allowedPrograms: ["WORK_AND_TRAVEL"],
+          canManageJobPool: true,
+          canManageApprovals: true,
+        },
+      },
+      {
+        name: "Akademi & Dil Okulu Danışmanı",
+        slug: "academy-language-advisor",
+        description: "Akademi, Dil Okulu, Yaz Kampı, Partner Okul Havuzu ve Application yönetimi.",
+        baseRole: Role.ADVISOR,
+        isSystem: true,
+        permissions: {
+          allowedPrograms: ["ACADEMY", "LANGUAGE_SCHOOL", "SUMMER_CAMP"],
+          canManagePartnerPool: true,
+          canManageApprovals: true,
+        },
+      },
+      {
+        name: "Muhasebe & Finans Uzmanı",
+        slug: "accounting-specialist",
+        description: "Sadece muhasebe modülü, tahsilatlar, komisyonlar ve okul-hafta satış raporları.",
+        baseRole: Role.ACCOUNTING,
+        isSystem: true,
+        permissions: {
+          canManageAccounting: true,
+          canExportData: true,
+        },
+      },
+    ],
+  });
+
+  // Lead Follow-up Tarihleri Güncellemesi (Bugün, Overdue, Hiç Aranmamış, Tamamlandı sekmeleri için)
+  const allLeads = await prisma.lead.findMany({ orderBy: { createdAt: "asc" } });
+  const now = new Date();
+  const todayFollowUp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0);
+  const overdueFollowUp = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 gün geçmiş (Overdue!)
+  const futureFollowUp = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000);
+
+  if (allLeads[0]) {
+    await prisma.lead.update({
+      where: { id: allLeads[0].id },
+      data: {
+        sponsor: "AWA",
+        city: "İstanbul",
+        visaStatus: "Başvuru Hazırlığında",
+        followUpAt: todayFollowUp,
+        lastContactedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
+        lastCallOutcome: "REACHED",
+        callCount: 1,
+      },
+    });
+  }
+  if (allLeads[1]) {
+    await prisma.lead.update({
+      where: { id: allLeads[1].id },
+      data: {
+        sponsor: "TUM / Uni-Assist",
+        city: "Ankara",
+        visaStatus: "Evrak Bekleniyor",
+        followUpAt: overdueFollowUp, // OVERDUE kırmızı uyarı!
+        lastContactedAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+        lastCallOutcome: "BUSY",
+        callCount: 1,
+      },
+    });
+  }
+  if (allLeads[2]) {
+    await prisma.lead.update({
+      where: { id: allLeads[2].id },
+      data: {
+        sponsor: "EC English",
+        city: "İzmir",
+        visaStatus: "Belirsiz",
+        followUpAt: todayFollowUp,
+        callCount: 0,
+      },
+    });
+  }
+  if (allLeads[3]) {
+    await prisma.lead.update({
+      where: { id: allLeads[3].id },
+      data: {
+        sponsor: "IEE",
+        city: "Bursa",
+        visaStatus: "Pasaport Bekleniyor",
+        followUpAt: overdueFollowUp, // OVERDUE!
+        callCount: 0,
+      },
+    });
+  }
+  if (allLeads[4]) {
+    await prisma.lead.update({
+      where: { id: allLeads[4].id },
+      data: {
+        sponsor: "Oxford Royale",
+        city: "Antalya",
+        lastContactedAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
+        lastCallOutcome: "UNINTERESTED",
+        callCount: 2,
+        followUpAt: futureFollowUp,
+      },
+    });
+  }
+
+  // WAT İş Havuzu (Section 4 — 22 Alanlı Gerçekçi İş İlanları)
+  const watJob1 = await prisma.watJob.create({
+    data: {
+      sponsor: "AWA",
+      program: "Work and Travel",
+      jobCategory: "Lifeguard",
+      jobTitle: "Premier Aquatics — Lifeguard",
+      placementType: "Full Placement",
+      location: "Virginia Beach, VA",
+      state: "VA",
+      arrivalAirport: "Washington Dulles (IAD)",
+      hourlyWage: 18.0,
+      avgWorkingHours: 40,
+      accommodationCost: 115.0,
+      accommodationDeposit: 200.0,
+      food: "Yok (Mutfaklı Konaklama)",
+      transportation: "Bisiklet / Toplu Taşıma (Yürüme Mesafesi)",
+      workApparel: "Ücretsiz Cankurtaran Üniforması + Düdük",
+      position: "Pool Lifeguard",
+      genderPreference: "Males and Females",
+      jobStartDate: new Date("2026-06-15"),
+      jobEndDate: new Date("2026-09-15"),
+      earlyLeaveInfo: "7 Eylül sonrası izinli",
+      numPlacements: 12,
+      filledPlacements: 4,
+      bonus: "Sezon sonu $250 tamamlama bonusu",
+      additionalInfo: "Ücretsiz Red Cross sertifika eğitimi işveren tarafından sağlanır. Overtime (27$/saat) imkanı mevcuttur.",
+      isActive: true,
+    },
+  });
+
+  const watJob2 = await prisma.watJob.create({
+    data: {
+      sponsor: "UWT",
+      program: "Work and Travel",
+      jobCategory: "Amusement Park",
+      jobTitle: "Cedar Point Amusement Park — Ride Operator",
+      placementType: "Full Placement",
+      location: "Sandusky, OH",
+      state: "OH",
+      arrivalAirport: "Cleveland Hopkins (CLE)",
+      hourlyWage: 16.5,
+      avgWorkingHours: 42,
+      accommodationCost: 85.0,
+      accommodationDeposit: 100.0,
+      food: "Personel kafeteryasında %50 indirimli öğün",
+      transportation: "Ücretsiz Park İçi Shuttle Servisi",
+      workApparel: "2 adet tişört işveren tarafından verilir, bej şort öğrenciye ait",
+      position: "Ride Operator & Park Attendant",
+      genderPreference: "Males and Females",
+      jobStartDate: new Date("2026-06-10"),
+      jobEndDate: new Date("2026-09-20"),
+      earlyLeaveInfo: "Var (10 Eylül)",
+      numPlacements: 20,
+      filledPlacements: 8,
+      bonus: "Saat başı +$1.00 sezon sonu sadakat primi",
+      additionalInfo: "Amerika'nın en büyük roller coaster parkı. Kampüs içi yurt konaklaması.",
+      isActive: true,
+    },
+  });
+
+  await prisma.watJob.createMany({
+    data: [
+      {
+        sponsor: "IEE",
+        program: "Work and Travel",
+        jobCategory: "Hospitality & Resort",
+        jobTitle: "Grand Hotel Mackinac Island — Server & Hostess",
+        placementType: "Full Placement",
+        location: "Mackinac Island, MI",
+        state: "MI",
+        arrivalAirport: "Pellston Regional (PLN) / Detroit (DTW)",
+        hourlyWage: 15.5,
+        avgWorkingHours: 38,
+        accommodationCost: 95.0,
+        accommodationDeposit: 150.0,
+        food: "Günde 3 öğün ücretsiz açık büfe yemek",
+        transportation: "Ada içi yaya / bisiklet ulaşımı",
+        workApparel: "Siyah pantolon, beyaz gömlek",
+        position: "Dining Room Server / Host",
+        genderPreference: "Males and Females",
+        jobStartDate: new Date("2026-06-12"),
+        jobEndDate: new Date("2026-09-18"),
+        earlyLeaveInfo: "Yok",
+        numPlacements: 8,
+        filledPlacements: 2,
+        bonus: "Bahşiş (Tips) + Sezon sonu $300 bonus",
+        additionalInfo: "Bahşişlerle birlikte haftalık ortalama $850-$1100 kazanç potansiyeli.",
+        isActive: true,
+      },
+      {
+        sponsor: "Life Adventures",
+        program: "Work and Travel",
+        jobCategory: "Food & Beverage",
+        jobTitle: "Ocean City Boardwalk — Barista & Cashier",
+        placementType: "Full Placement",
+        location: "Ocean City, MD",
+        state: "MD",
+        arrivalAirport: "Baltimore/Washington (BWI) / JFK",
+        hourlyWage: 16.0,
+        avgWorkingHours: 36,
+        accommodationCost: 130.0,
+        accommodationDeposit: 250.0,
+        food: "Vardiya sırasında 1 öğün ücretsiz + kahve",
+        transportation: "Otobüs (haftalık $15 sınırsız geçiş)",
+        workApparel: "İşveren tişörtü + kot/şort",
+        position: "Barista / Counter Staff",
+        genderPreference: "Females Only",
+        jobStartDate: new Date("2026-06-08"),
+        jobEndDate: new Date("2026-09-12"),
+        earlyLeaveInfo: "1 Eylül sonrası mümkün",
+        numPlacements: 6,
+        filledPlacements: 1,
+        bonus: "Bahşiş (Tip Jar paylaşımı)",
+        additionalInfo: "Sahil kasabası, ikinci iş (second job) bulmaya çok elverişli lokasyon.",
+        isActive: true,
+      },
+    ],
+  });
+
+  // Öğrenciye Özel İş Linki Ataması (Anıl Solmaz & Barış Akın)
+  await prisma.watJobAssignment.create({
+    data: {
+      jobId: watJob1.id,
+      studentId: student1.id,
+      assignedById: advisorRecep.id,
+      shareToken: "backpax-wat-offer-anil-2026",
+      status: "ACCEPTED",
+      studentNote: "İş şartlarını ve konaklama detaylarını inceledim, onaylıyorum.",
+      respondedAt: new Date("2026-02-15T14:20:00Z"),
+    },
+  });
+
+  await prisma.watJobAssignment.create({
+    data: {
+      jobId: watJob2.id,
+      studentId: student4.id,
+      assignedById: advisorRecep.id,
+      shareToken: "backpax-wat-offer-baris-2026",
+      status: "SENT",
+    },
+  });
+
+  // Anıl Solmaz WAT DS-160 & Konaklama Güncellemesi
+  await prisma.watDetail.update({
+    where: { studentId: student1.id },
+    data: {
+      currentStage: "VISA_APPOINTMENT",
+      ds160Status: "SUBMITTED",
+      ds160ConfirmationNo: "AA0098X4K2",
+      passportDeadline: new Date("2026-03-01"),
+      visaDeadline: new Date("2026-05-05"),
+      accommodationSold: true,
+      accommodationCommission: 250.0,
+      ds160Data: {
+        confirmationNo: "AA0098X4K2",
+        consulateLocation: "İstanbul Başkonsolosluğu",
+        travelPurpose: "J-1 Exchange Visitor (Work & Travel)",
+        intendedArrivalDate: "2026-06-12",
+        intendedLengthOfStay: "3.5 Ay",
+        usAddressStreet: "400 Atlantic Ave",
+        usAddressCity: "Virginia Beach",
+        usAddressState: "VA",
+        usContactName: "Premier Aquatics HR",
+        usContactPhone: "+1 757-555-0192",
+        sevisId: "N0034567891",
+        programNumber: "P-4-05412",
+      },
+    },
+  });
+
+  // Barış Akın WAT Overdue Deadline Testi
+  await prisma.watDetail.update({
+    where: { studentId: student4.id },
+    data: {
+      currentStage: "JOB_PLACEMENT",
+      ds160Status: "DRAFT",
+      passportDeadline: new Date("2026-02-01"),
+      visaDeadline: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), // OVERDUE!
+    },
+  });
+
+  // Partner Okul Havuzu (Section 6 [P1])
+  const partnerTum = await prisma.partnerSchool.create({
+    data: {
+      name: "Technical University of Munich (TUM)",
+      country: "Almanya",
+      city: "Münih",
+      programType: Program.ACADEMY,
+      programsOffered: ["M.Sc. Computer Science", "M.Sc. Data Engineering", "B.Sc. Management & Tech"],
+      quota: 15,
+      commissionRate: 12.0,
+      commissionFixed: 450.0,
+      currency: Currency.EUR,
+      contactEmail: "international@tum.de",
+      website: "https://www.tum.de",
+      notes: "Uni-assist VPD ön onayı gerektirir. Son başvuru 31 Mayıs.",
+    },
+  });
+
+  const partnerEcDublin = await prisma.partnerSchool.create({
+    data: {
+      name: "EC English Language Centres — Dublin",
+      country: "İrlanda",
+      city: "Dublin",
+      programType: Program.LANGUAGE_SCHOOL,
+      programsOffered: ["25 Hafta Work & Study", "Yoğun İngilizce 30 Ders", "IELTS Hazırlık"],
+      quota: 40,
+      commissionRate: 25.0,
+      commissionFixed: 950.0,
+      currency: Currency.EUR,
+      contactEmail: "admissions@ecenglish.com",
+      website: "https://www.ecenglish.com",
+      notes: "25 hafta kayıtlarda %25 acente komisyonu (Gross/Net fatura kesilir).",
+    },
+  });
+
+  const partnerOxfordRoyale = await prisma.partnerSchool.create({
+    data: {
+      name: "Oxford Royale Academy — St. Hugh's College",
+      country: "İngiltere",
+      city: "Oxford",
+      programType: Program.SUMMER_CAMP,
+      programsOffered: ["STEM & Leadership (16-18)", "Medical School Prep", "Young Explorers (13-15)"],
+      quota: 30,
+      commissionRate: 15.0,
+      commissionFixed: 570.0,
+      currency: Currency.GBP,
+      contactEmail: "groups@oxfordroyale.com",
+      website: "https://www.oxfordroyale.com",
+      notes: "Grup allocation sözleşmesi mevcut. 15 öğrenciye 1 grup lideri ücretsiz.",
+    },
+  });
+
+  // Akademik Başvurular (Section 6 [P1] — Deniz Arda Application Kartları)
+  await prisma.academicApplication.createMany({
+    data: [
+      {
+        appCode: "APP-2026-101",
+        studentId: student2.id,
+        partnerSchoolId: partnerTum.id,
+        institutionName: "Technical University of Munich (TUM)",
+        country: "Almanya",
+        courseName: "M.Sc. in Computer Science & AI",
+        degree: "M.Sc.",
+        intake: "Fall 2026",
+        priority: 1,
+        status: "CONDITIONAL_OFFER",
+        applicationDeadline: new Date("2026-05-31"),
+        visaDeadline: new Date("2026-07-15"),
+        notes: "Ön kabul mektubu alındı. Bloke hesap onayı bekleniyor.",
+      },
+      {
+        appCode: "APP-2026-102",
+        studentId: student2.id,
+        institutionName: "RWTH Aachen University",
+        country: "Almanya",
+        courseName: "M.Sc. Data Science",
+        degree: "M.Sc.",
+        intake: "Fall 2026",
+        priority: 2,
+        status: "SENT_TO_INSTITUTION",
+        applicationDeadline: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // Overdue test!
+        visaDeadline: new Date("2026-07-20"),
+        notes: "Kuruma gönderildi, komite değerlendirmesinde.",
+      },
+    ],
+  });
+
+  // Dil Okulu 5 Aşamalı Takip Güncellemesi (Zeynep Melis Karaca - Section 6)
+  await prisma.languageDetail.update({
+    where: { studentId: student3.id },
+    data: {
+      partnerSchoolId: partnerEcDublin.id,
+      agreementsDone: true,
+      agreementsDate: new Date("2026-01-12"),
+      agreementsSignedDone: true,
+      agreementsSignedDate: new Date("2026-01-15"),
+      grossInvoiceDone: true,
+      grossInvoiceDate: new Date("2026-01-18"),
+      grossInvoiceAmount: 4850.0,
+      netInvoiceDone: true,
+      netInvoiceDate: new Date("2026-01-19"),
+      netInvoiceAmount: 3637.5,
+      letterOfAcceptanceDone: false,
+    },
+  });
+
+  // Yaz Okulu Allocation & Booking (Section 5 & Section 7)
+  const oxfordAllocation = await prisma.summerAllocation.create({
+    data: {
+      country: "İngiltere",
+      centerName: "Oxford St. Hugh's College Campus",
+      nights: 21,
+      startDate: new Date("2026-07-05"),
+      endDate: new Date("2026-07-26"),
+      totalQuota: 20,
+      usedQuota: 12,
+      pricePerStudent: 3800.0,
+      currency: Currency.GBP,
+      notes: "BackPax 2026 Temmuz UK Grup Kontenjanı",
+    },
+  });
+
+  const oxfordBooking = await prisma.summerBooking.create({
+    data: {
+      bookingCode: "BK-2026-101",
+      groupName: "UK Oxford Temmuz 2026 Grubu",
+      allocationId: oxfordAllocation.id,
+      country: "İngiltere",
+      centerName: "Oxford St. Hugh's College Campus",
+      nights: 21,
+      startDate: new Date("2026-07-05"),
+      participantCount: 12,
+      termsAccepted: true,
+      airportTransfers: {
+        arrivalAirport: "London Heathrow (LHR)",
+        arrivalFlightNo: "TK1979",
+        departureAirport: "London Heathrow (LHR)",
+        departureFlightNo: "TK1980",
+        transferIncluded: true,
+      },
+      extraServices: {
+        excursions: ["London Eye & Thames Tour", "Cambridge Day Trip", "Harry Potter Warner Bros Studio"],
+        travelInsurance: true,
+        mealPlan: "Full Board (3 Öğün)",
+        groupLeaderCount: 1,
+      },
+      totalAmount: 45600.0,
+      currency: Currency.GBP,
+      summaryNotes: "12 öğrenci + 1 grup lideri onaylı UK yaz okulu paketi.",
+      status: "CONFIRMED",
+    },
+  });
+
+  await prisma.student.update({
+    where: { id: student5.id },
+    data: {
+      groupName: "UK Oxford Temmuz 2026 Grubu",
+      summerBookingId: oxfordBooking.id,
+    },
+  });
+
+  await prisma.summerCampDetail.update({
+    where: { studentId: student5.id },
+    data: {
+      ukviLink: "https://visas-immigration.service.gov.uk/apply/uk-visa-cemre-2026",
+      visaAppointmentDate: new Date("2026-05-18T11:00:00Z"),
+      visaStatus: "TLScontact Randevu Alındı · Evrak Tamam",
+    },
+  });
+
+  // Muhasebe Defteri Kayıtları (Section 8 — Alınan, Verilen, Komisyonlar ve Okul-Hafta Raporu)
+  await prisma.accountingEntry.createMany({
+    data: [
+      {
+        type: "INCOME",
+        category: "TUITION",
+        studentId: student1.id,
+        advisorId: advisorRecep.id,
+        description: "Anıl Solmaz — WAT 2026 1. ve 2. Taksit Tahsilatı",
+        amount: 1750.0,
+        currency: Currency.USD,
+        paymentMethod: "BANK_TRANSFER",
+        transactionDate: new Date("2026-02-10"),
+        isPaid: true,
+      },
+      {
+        type: "EXPENSE",
+        category: "VISA_FEE",
+        studentId: student1.id,
+        advisorId: advisorRecep.id,
+        description: "Anıl Solmaz — CIEE Sponsor & SEVIS Ödemesi",
+        amount: 920.0,
+        currency: Currency.USD,
+        paymentMethod: "BANK_TRANSFER",
+        transactionDate: new Date("2026-02-18"),
+        isPaid: true,
+      },
+      {
+        type: "COMMISSION",
+        category: "ACCOMMODATION_COMMISSION",
+        studentId: student1.id,
+        advisorId: advisorRecep.id,
+        description: "Anıl Solmaz — Virginia Beach Konaklama Satış Komisyonu",
+        amount: 250.0,
+        currency: Currency.USD,
+        paymentMethod: "BANK_TRANSFER",
+        transactionDate: new Date("2026-02-20"),
+        isPaid: true,
+      },
+      {
+        type: "INCOME",
+        category: "TUITION",
+        studentId: student3.id,
+        partnerSchoolId: partnerEcDublin.id,
+        advisorId: advisorIpek.id,
+        description: "Zeynep Melis Karaca — EC English Dublin 25 Hafta Dil Okulu",
+        amount: 4850.0,
+        grossAmount: 4850.0,
+        netAmount: 3637.5,
+        weeksSold: 25,
+        currency: Currency.EUR,
+        paymentMethod: "BANK_TRANSFER",
+        transactionDate: new Date("2026-01-18"),
+        isPaid: true,
+      },
+      {
+        type: "COMMISSION",
+        category: "SCHOOL_COMMISSION",
+        studentId: student3.id,
+        partnerSchoolId: partnerEcDublin.id,
+        advisorId: advisorIpek.id,
+        description: "EC English Dublin — 25 Hafta %25 Acente Satış Komisyonu (Gross - Net)",
+        amount: 1212.5,
+        grossAmount: 4850.0,
+        netAmount: 3637.5,
+        weeksSold: 25,
+        currency: Currency.EUR,
+        paymentMethod: "BANK_TRANSFER",
+        transactionDate: new Date("2026-01-20"),
+        isPaid: true,
+      },
+      {
+        type: "INCOME",
+        category: "TUITION",
+        studentId: student5.id,
+        partnerSchoolId: partnerOxfordRoyale.id,
+        advisorId: advisorIpek.id,
+        description: "Cemre Doğan — Oxford Summer Academy 3 Hafta Kamp Ücreti",
+        amount: 3800.0,
+        grossAmount: 3800.0,
+        netAmount: 3230.0,
+        weeksSold: 3,
+        currency: Currency.GBP,
+        paymentMethod: "CREDIT_CARD",
+        transactionDate: new Date("2026-01-29"),
+        isPaid: true,
+      },
+    ],
+  });
+
+  // Bildirim Merkezi Örnekleri (Section 9 — Çan İkonu Bildirimleri)
+  await prisma.notification.createMany({
+    data: [
+      {
+        userId: admin.id,
+        type: "OVERDUE",
+        title: "⚠️ 2 Adayın Arama Takibi (Follow-up) Gecikti!",
+        message: "Caner Erkin ve Alperen Çetin için planlanan arama tarihi geçti.",
+        linkUrl: "/leads?tab=overdue",
+      },
+      {
+        userId: advisorRecep.id,
+        type: "JOB_RESPONSE",
+        title: "✅ Anıl Solmaz WAT İş Teklifini Onayladı",
+        message: "Premier Aquatics — Lifeguard (Virginia Beach, VA) teklifi öğrenci tarafından kabul edildi.",
+        linkUrl: `/students/${student1.id}`,
+      },
+      {
+        userId: advisorIpek.id,
+        type: "DEADLINE",
+        title: "⏰ Akademik Başvuru Deadline Uyarısı",
+        message: "Deniz Arda — RWTH Aachen M.Sc. başvuru son tarihi geçti, durumu güncelleyin.",
+        linkUrl: `/students/${student2.id}`,
+      },
+    ],
+  });
+
+  console.log("✅ BackPax V2 Modülleri (İş Havuzu, Partner Okullar, Başvurular, Booking, Muhasebe) tohumlandı.");
   console.log("🚀 CRM Mock Veri Tohumlaması Başarıyla Tamamlandı!");
 }
 

@@ -14,13 +14,14 @@ export default async function SettingsPage() {
     redirect("/dashboard");
   }
 
-  const [staffUsers, integrationStatus] = await Promise.all([
+  const [staffUsers, customRoles, integrationStatus] = await Promise.all([
     prisma.user.findMany({
       where: {
-        role: { in: ["ADMIN", "ADVISOR"] },
+        role: { in: ["ADMIN", "ADVISOR", "ACCOUNTING"] },
       },
       include: {
         advisorProfile: true,
+        customRole: true,
         _count: {
           select: {
             studentsAsAdvisor: true,
@@ -30,30 +31,33 @@ export default async function SettingsPage() {
       },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.customRole.findMany({
+      orderBy: { createdAt: "asc" },
+    }),
     getIntegrationStatus(),
   ]);
 
   return (
     <div className="space-y-6">
-      {/* ── Page Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-lg bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-700 uppercase tracking-wide">
-              Yönetici Paneli
+            <span className="rounded-lg bg-[#0f172a] px-2.5 py-0.5 text-xs font-bold text-sky-300 uppercase tracking-wide">
+              BackPax Yönetici Paneli
             </span>
           </div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-900">
-            Sistem Ayarları & Yapılandırma
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#0f172a]">
+            Sistem, Personel &amp; Dinamik Rol Ayarları
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Danışman hesapları, e-posta/SMS servisleri, webhook anahtarları ve canlı operasyon ayarları.
+          <p className="text-sm text-slate-500 mt-0.5">
+            Danışman, Muhasebe ve Yönetici hesapları, yeni rol tanımlama (Custom RBAC) ve servis yapılandırması.
           </p>
         </div>
       </div>
 
       <SettingsClient
         initialUsers={staffUsers}
+        customRoles={customRoles}
         currentUserId={user.id}
         integrationStatus={integrationStatus}
       />

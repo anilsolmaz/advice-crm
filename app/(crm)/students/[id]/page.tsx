@@ -15,58 +15,69 @@ interface Props {
 export default async function StudentDetailPage({ params }: Props) {
   const user = await requireStaff();
 
-  const isAdvisor = user.role === "ADVISOR";
-  const student = await prisma.student.findUnique({
-    where: { id: params.id },
-    include: {
-      user: true,
-      advisor: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-        },
-      },
-      profile: true,
-      watDetail: true,
-      academyDetail: true,
-      languageDetail: true,
-      summerCampDetail: true,
-      visaDetail: true,
-      documents: {
-        orderBy: { createdAt: "desc" },
-      },
-      payments: {
-        include: {
-          installments: {
-            orderBy: { sequence: "asc" },
+  const [student, staffList] = await Promise.all([
+    prisma.student.findUnique({
+      where: { id: params.id },
+      include: {
+        user: true,
+        advisor: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
           },
         },
-      },
-      advisorNotes: {
-        include: {
-          author: {
-            select: {
-              id: true,
-              fullName: true,
+        profile: true,
+        watDetail: true,
+        academyDetail: true,
+        languageDetail: true,
+        summerCampDetail: true,
+        visaDetail: true,
+        academicApplications: {
+          orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
+        },
+        watJobAssignments: {
+          include: { job: true },
+          orderBy: { createdAt: "desc" },
+        },
+        accountingEntries: {
+          orderBy: { transactionDate: "desc" },
+        },
+        documents: {
+          orderBy: { createdAt: "desc" },
+        },
+        payments: {
+          include: {
+            installments: {
+              orderBy: { sequence: "asc" },
             },
           },
         },
-        orderBy: {
-          createdAt: "desc",
+        advisorNotes: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                fullName: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "ADVISOR", "ACCOUNTING"] }, isActive: true },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: "asc" },
+    }),
+  ]);
 
   if (!student) {
     notFound();
   }
 
-  // Advisor isolation check: if advisor, they can only view students assigned to them
-  if (isAdvisor && student.advisorId && student.advisorId !== user.id) {
-    notFound();
-  }
-
-  return <StudentDetailView student={student} />;
+  return <StudentDetailView student={student} staffList={staffList} />;
 }

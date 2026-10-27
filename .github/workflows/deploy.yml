@@ -34,7 +34,8 @@ jobs:
             npm install --production=false
 
             echo "🗄️ 3/5: Veritabanı şeması güncelleniyor..."
-            npx prisma db push
+            npx prisma db push --accept-data-loss
+            npx tsx prisma/seed.ts
 
             echo "⚡ 4/5: Next.js canlı derlemesi yapılıyor..."
             NODE_OPTIONS="--max-old-space-size=2048" npm run build

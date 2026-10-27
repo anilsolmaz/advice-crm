@@ -56,6 +56,17 @@ export type CRMUser = {
 
 // ── Lead ─────────────────────────────────────────────────────────────────────
 
+export type CRMLeadCallLog = {
+  id: string;
+  leadId: string;
+  advisorId: string;
+  advisorName?: string;
+  outcome: string;
+  notes: string | null;
+  nextFollowUpAt: Date | null;
+  createdAt: Date;
+};
+
 export type CRMLead = {
   id: string;
   fullName: string;
@@ -64,9 +75,17 @@ export type CRMLead = {
   source: LeadSource;
   status: LeadStatus;
   program: Program;
+  sponsor?: string | null;
+  city?: string | null;
+  visaStatus?: string | null;
   notes: string | null;
   advisorId: string | null;
   advisor: Pick<CRMUser, "id" | "fullName" | "avatarUrl"> | null;
+  followUpAt?: Date | null;
+  lastContactedAt?: Date | null;
+  lastCallOutcome?: string | null;
+  callCount?: number;
+  callLogs?: CRMLeadCallLog[];
   convertedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -76,7 +95,17 @@ export type CRMLead = {
 export type CRMLeadRow = Pick<
   CRMLead,
   "id" | "fullName" | "email" | "phone" | "status" | "program" | "source" | "advisorId" | "createdAt"
->;
+> & {
+  advisorName?: string | null;
+  sponsor?: string | null;
+  city?: string | null;
+  visaStatus?: string | null;
+  notes?: string | null;
+  followUpAt?: Date | null;
+  lastContactedAt?: Date | null;
+  lastCallOutcome?: string | null;
+  callCount?: number;
+};
 
 // ── Student ───────────────────────────────────────────────────────────────────
 
@@ -432,6 +461,15 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   SPONSOR_LETTER: "Sponsor Mektubu",
   HEALTH_INSURANCE: "Sağlık Sigortası",
   REFERENCE_LETTER: "Referans Mektubu",
+  DS_2019: "DS-2019 Belgesi",
+  CV: "Özgeçmiş (CV)",
+  CRIMINAL_RECORD: "Adli Sicil Kaydı",
+  CONTRACT: "Sözleşme",
+  SEVIS_RECEIPT: "SEVIS Makbuzu",
+  JOB_OFFER: "Job Offer (İş Teklifi)",
+  STUDENT_CERTIFICATE: "Öğrenci Belgesi",
+  DS_160_CONFIRMATION: "DS-160 Onay Sayfası",
+  PAYMENT_RECEIPT: "Ödeme Dekontu",
   OTHER: "Diğer",
 } as const;
 

@@ -10,8 +10,8 @@ export type NoteActionState =
   | { success: false; error: string };
 
 /**
- * Appends an immutable advisor note to a student's history.
- * Notes can NEVER be edited or deleted — this function only creates.
+ * Appends an immutable advisor note / team conversation entry to a student's history.
+ * Supports @mention detection and notifies tagged team members.
  */
 export async function createAdvisorNote(
   studentId: string,
@@ -29,22 +29,53 @@ export async function createAdvisorNote(
     return { success: false, error: "Not en fazla 2000 karakter olabilir." };
   }
 
-  await prisma.advisorNote.create({
-    data: {
-      studentId,
-      authorId: advisor.id,
-      note,
-    },
+  // Detect @mentions from staff users
+  const staffUsers = await prisma.user.findMany({
+    where: { role: { in: ["ADMIN", "ADVISOR", "ACCOUNTING"] }, isActive: true },
+    select: { id: true, fullName: true, email: true },
+  });
+
+  const noteLower = note.toLowerCase();
+  const mentionedUsers = staffUsers.filter((u) => {
+    const firstName = u.fullName.split(" ")[0]?.toLowerCase();
+    return (
+      (firstName && noteLower.includes(`@${firstName}`)) ||
+      noteLower.includes(`@${u.email.split("@")[0].toLowerCase()}`)
+    );
+  });
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    include: { user: { select: { fullName: true } } },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.advisorNote.create({
+      data: {
+        studentId,
+        authorId: advisor.id,
+        note,
+        mentionedUserIds: mentionedUsers.map((u) => u.id),
+      },
+    });
+
+    if (mentionedUsers.length > 0) {
+      await tx.notification.createMany({
+        data: mentionedUsers.map((u) => ({
+          userId: u.id,
+          type: "MENTION",
+          title: `💬 ${advisor.fullName} sizi bir öğrenci notunda etiketledi`,
+          message: `${student?.user.fullName || "Öğrenci"} kaydında: "${note.slice(0, 120)}"`,
+          linkUrl: `/students/${studentId}`,
+        })),
+      });
+    }
   });
 
   revalidatePath(`/students/${studentId}`);
   return { success: true };
 }
 
-/**
- * Toggles the pinned state of an advisor note.
- * Only admins can pin/unpin notes.
- */
 export async function toggleNotePin(
   noteId: string,
   isPinned: boolean,
@@ -54,8 +85,6 @@ export async function toggleNotePin(
     return { success: false, error: "Notu sabitleme yetkiniz yok." };
   }
 
-  // NOTE: This is the ONLY permissible mutation on AdvisorNote
-  // (isPinned is a display preference, not the note content itself)
   await prisma.advisorNote.update({
     where: { id: noteId },
     data: { isPinned },
