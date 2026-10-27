@@ -817,32 +817,31 @@ export function LeadDetailModal({
                       )}
                     </div>
 
-                    {/* 2. Sonraki Takip Tarihi + Hemen Yanında/Üstünde Hızlı Ertele Butonları */}
+                    {/* 2. Sonraki Takip Tarihi (Label -> Butonlar -> Date Picker) */}
                     <div>
-                      <div className="mb-1 flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-slate-600">
-                          Sonraki Takip Tarihi
-                        </label>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-semibold text-slate-400">Ertele:</span>
-                          {[
-                            { d: 1, label: "+1 Gün" },
-                            { d: 3, label: "+3 Gün" },
-                            { d: 7, label: "+7 Gün" },
-                          ].map((btn) => (
-                            <button
-                              key={btn.d}
-                              type="button"
-                              onClick={() => handlePostpone(btn.d)}
-                              disabled={isPending}
-                              title={`Takip tarihini bugünden ${btn.d} gün sonraya ayarla`}
-                              className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-[#0f172a] hover:text-white hover:border-[#0f172a] transition-colors"
-                            >
-                              {btn.label}
-                            </button>
-                          ))}
-                        </div>
+                      <label className="mb-1 block text-[11px] font-bold text-slate-600">
+                        Sonraki Takip Tarihi
+                      </label>
+                      {/* Butonlar */}
+                      <div className="mb-1.5 flex items-center gap-1.5">
+                        {[
+                          { d: 1, label: "+1 Gün" },
+                          { d: 3, label: "+3 Gün" },
+                          { d: 7, label: "+7 Gün" },
+                        ].map((btn) => (
+                          <button
+                            key={btn.d}
+                            type="button"
+                            onClick={() => handlePostpone(btn.d)}
+                            disabled={isPending}
+                            title={`Takip tarihini bugünden ${btn.d} gün sonraya ayarla`}
+                            className="flex-1 rounded-lg border border-slate-200 bg-slate-50 py-1 text-center text-[10px] font-bold text-slate-600 hover:bg-[#0f172a] hover:text-white hover:border-[#0f172a] transition-colors"
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
                       </div>
+                      {/* Date Picker */}
                       <input
                         type="date"
                         value={nextFollowUpDate}
