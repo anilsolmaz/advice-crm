@@ -27,6 +27,7 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { CRMLeadRow, CRMAdvisorNote, Program } from "@/types/crm";
@@ -296,114 +297,48 @@ function SaveButton({ label = "Değişiklikleri Kaydet" }: { label?: string }) {
 export interface OutcomeOption {
   value: string;
   label: string;
-  suggestedDays: number;
   icon: React.ElementType;
   iconColor: string;
 }
 
-export interface OutcomeGroup {
-  groupName: string;
-  items: OutcomeOption[];
-}
-
-export const OUTCOME_GROUPS: OutcomeGroup[] = [
+export const ALL_OUTCOMES: OutcomeOption[] = [
   {
-    groupName: "Çağrı & Görüşme Sonuçları",
-    items: [
-      {
-        value: "REACHED",
-        label: "Ulaşıldı / Görüşüldü",
-        suggestedDays: 3,
-        icon: PhoneCall,
-        iconColor: "text-emerald-600",
-      },
-      {
-        value: "INTERESTED",
-        label: "Çok İlgili / Tekrar Aranacak",
-        suggestedDays: 2,
-        icon: Sparkles,
-        iconColor: "text-amber-500",
-      },
-      {
-        value: "BUSY",
-        label: "Meşgul / Sonra Ara Dedi",
-        suggestedDays: 1,
-        icon: Clock,
-        iconColor: "text-blue-500",
-      },
-      {
-        value: "UNREACHABLE",
-        label: "Ulaşılamadı / Cevap Yok",
-        suggestedDays: 1,
-        icon: PhoneMissed,
-        iconColor: "text-rose-500",
-      },
-      {
-        value: "UNINTERESTED",
-        label: "İlgilenmiyor",
-        suggestedDays: 0,
-        icon: Ban,
-        iconColor: "text-slate-400",
-      },
-    ],
+    value: "Ulaşıldı / Görüşüldü",
+    label: "Ulaşıldı / Görüşüldü",
+    icon: PhoneCall,
+    iconColor: "text-emerald-600",
   },
   {
-    groupName: "İletişim & Danışman Notları",
-    items: [
-      {
-        value: "Görüşme Notu",
-        label: "Görüşme Notu (Genel)",
-        suggestedDays: 3,
-        icon: MessageSquare,
-        iconColor: "text-sky-600",
-      },
-      {
-        value: "WhatsApp Görüşmesi",
-        label: "WhatsApp Görüşmesi",
-        suggestedDays: 3,
-        icon: MessageCircle,
-        iconColor: "text-emerald-600",
-      },
-      {
-        value: "Aday Profil & Bütçe",
-        label: "Aday Profil & Bütçe Notu",
-        suggestedDays: 4,
-        icon: Wallet,
-        iconColor: "text-purple-600",
-      },
-      {
-        value: "Vize & Evrak Notu",
-        label: "Vize & Evrak Notu",
-        suggestedDays: 5,
-        icon: FileText,
-        iconColor: "text-indigo-600",
-      },
-      {
-        value: "Özel Not",
-        label: "Özel Danışman Notu",
-        suggestedDays: 0,
-        icon: Lock,
-        iconColor: "text-slate-600",
-      },
-    ],
+    value: "Meşgul / Sonra Ara",
+    label: "Meşgul / Sonra Ara",
+    icon: Clock,
+    iconColor: "text-amber-500",
   },
   {
-    groupName: "Kayıt Durumu",
-    items: [
-      {
-        value: "REGISTERED",
-        label: "Kayıt Oldu (Kesin Kayıt)",
-        suggestedDays: 0,
-        icon: CheckCircle2,
-        iconColor: "text-emerald-600",
-      },
-    ],
+    value: "Ulaşılamadı / Cevap Yok",
+    label: "Ulaşılamadı / Cevap Yok",
+    icon: PhoneMissed,
+    iconColor: "text-rose-500",
+  },
+  {
+    value: "WhatsApp Görüşmesi",
+    label: "WhatsApp Görüşmesi",
+    icon: MessageCircle,
+    iconColor: "text-emerald-600",
+  },
+  {
+    value: "İlgilenmiyor",
+    label: "İlgilenmiyor",
+    icon: Ban,
+    iconColor: "text-slate-400",
+  },
+  {
+    value: "Kayıt Oldu",
+    label: "Kayıt Oldu (Kesin Kayıt)",
+    icon: CheckCircle2,
+    iconColor: "text-emerald-600",
   },
 ];
-
-export const ALL_OUTCOMES: OutcomeOption[] = OUTCOME_GROUPS.flatMap(
-  (g) => g.items,
-);
 
 const UNIFIED_CALL_OUTCOMES = ALL_OUTCOMES;
 
@@ -428,7 +363,7 @@ export function LeadDetailModal({
   );
 
   const [localNotes, setLocalNotes] = useState<string>(lead.notes ?? "");
-  const [selectedOutcome, setSelectedOutcome] = useState("Görüşme Notu");
+  const [selectedOutcome, setSelectedOutcome] = useState("Ulaşıldı / Görüşüldü");
   const [unifiedNoteText, setUnifiedNoteText] = useState("");
   const [saveToast, setSaveToast] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -456,7 +391,7 @@ export function LeadDetailModal({
 
   const currentOutcomeItem =
     ALL_OUTCOMES.find((o) => o.value === selectedOutcome) || ALL_OUTCOMES[0];
-  const CurrentOutcomeIcon = currentOutcomeItem?.icon || MessageSquare;
+  const CurrentOutcomeIcon = currentOutcomeItem?.icon || PhoneCall;
 
   const defaultFollowUpStr = lead.followUpAt
     ? new Date(lead.followUpAt).toISOString().slice(0, 10)
@@ -482,12 +417,6 @@ export function LeadDetailModal({
 
   function handleOutcomeChange(val: string) {
     setSelectedOutcome(val);
-    const found = UNIFIED_CALL_OUTCOMES.find((o) => o.value === val);
-    if (found && found.suggestedDays > 0) {
-      const next = new Date();
-      next.setDate(next.getDate() + found.suggestedDays);
-      setNextFollowUpDate(next.toISOString().slice(0, 10));
-    }
   }
 
   function handleSaveUnifiedNote(e: React.FormEvent) {
@@ -514,6 +443,10 @@ export function LeadDetailModal({
   }
 
   function handlePostpone(days: number) {
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + days);
+    setNextFollowUpDate(nextDate.toISOString().slice(0, 10));
+
     startTransition(async () => {
       const res = await postponeLeadFollowUp(lead.id, days);
       if (res.success && res.newFollowUpAt) {
@@ -811,7 +744,8 @@ export function LeadDetailModal({
                 </div>
 
                 <form onSubmit={handleSaveUnifiedNote} className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* 1. Kayıt Türü / Sonuç Dropdown */}
                     <div className="relative" ref={outcomeDropdownRef}>
                       <label className="mb-1 block text-[11px] font-bold text-slate-600">
                         Kayıt Türü / Sonuç
@@ -841,61 +775,74 @@ export function LeadDetailModal({
                       </button>
 
                       {isOutcomeOpen && (
-                        <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-full min-w-[270px] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                          {OUTCOME_GROUPS.map((group) => (
-                            <div key={group.groupName} className="mb-2 last:mb-0">
-                              <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                {group.groupName}
-                              </p>
-                              <div className="space-y-0.5">
-                                {group.items.map((item) => {
-                                  const Icon = item.icon;
-                                  const isSelected = selectedOutcome === item.value;
-                                  return (
-                                    <button
-                                      key={item.value}
-                                      type="button"
-                                      onClick={() => {
-                                        handleOutcomeChange(item.value);
-                                        setIsOutcomeOpen(false);
-                                      }}
+                        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[240px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                          <div className="space-y-0.5">
+                            {ALL_OUTCOMES.map((item) => {
+                              const Icon = item.icon;
+                              const isSelected = selectedOutcome === item.value;
+                              return (
+                                <button
+                                  key={item.value}
+                                  type="button"
+                                  onClick={() => {
+                                    handleOutcomeChange(item.value);
+                                    setIsOutcomeOpen(false);
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs text-left transition-colors",
+                                    isSelected
+                                      ? "bg-slate-100 font-bold text-slate-900"
+                                      : "text-slate-700 hover:bg-slate-50 font-medium",
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <Icon
                                       className={cn(
-                                        "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs text-left transition-colors",
-                                        isSelected
-                                          ? "bg-slate-100 font-bold text-slate-900"
-                                          : "text-slate-700 hover:bg-slate-50 font-medium",
+                                        "h-3.5 w-3.5 shrink-0",
+                                        item.iconColor,
                                       )}
-                                    >
-                                      <div className="flex items-center gap-2 truncate">
-                                        <Icon
-                                          className={cn(
-                                            "h-3.5 w-3.5 shrink-0",
-                                            item.iconColor,
-                                          )}
-                                        />
-                                        <span className="truncate">
-                                          {item.label}
-                                        </span>
-                                      </div>
-                                      {item.suggestedDays > 0 && (
-                                        <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
-                                          +{item.suggestedDays}g
-                                        </span>
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
+                                    />
+                                    <span className="truncate">
+                                      {item.label}
+                                    </span>
+                                  </div>
+                                  {isSelected && (
+                                    <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
 
+                    {/* 2. Sonraki Takip Tarihi + Hemen Yanında/Üstünde Hızlı Ertele Butonları */}
                     <div>
-                      <label className="mb-1 block text-[11px] font-bold text-slate-600">
-                        Sonraki Takip Tarihi
-                      </label>
+                      <div className="mb-1 flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-600">
+                          Sonraki Takip Tarihi
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-semibold text-slate-400">Ertele:</span>
+                          {[
+                            { d: 1, label: "+1 Gün" },
+                            { d: 3, label: "+3 Gün" },
+                            { d: 7, label: "+7 Gün" },
+                          ].map((btn) => (
+                            <button
+                              key={btn.d}
+                              type="button"
+                              onClick={() => handlePostpone(btn.d)}
+                              disabled={isPending}
+                              title={`Takip tarihini bugünden ${btn.d} gün sonraya ayarla`}
+                              className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-[#0f172a] hover:text-white hover:border-[#0f172a] transition-colors"
+                            >
+                              {btn.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <input
                         type="date"
                         value={nextFollowUpDate}
@@ -927,30 +874,6 @@ export function LeadDetailModal({
                     {isPending ? "Kaydediliyor…" : "Not & Takip Bilgisini Kaydet"}
                   </button>
                 </form>
-
-                {/* Hızlı Gün Erteleme Butonları */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Hızlı Ertele:
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {[
-                      { d: 1, label: "+1 Gün" },
-                      { d: 3, label: "+3 Gün" },
-                      { d: 7, label: "+7 Gün" },
-                    ].map((btn) => (
-                      <button
-                        key={btn.d}
-                        type="button"
-                        onClick={() => handlePostpone(btn.d)}
-                        disabled={isPending}
-                        className="rounded-lg border border-slate-200 bg-slate-50 py-1 px-2.5 text-[10px] font-bold text-slate-600 hover:bg-[#0f172a] hover:text-white transition-colors"
-                      >
-                        {btn.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* 2. ALT: Hızlı İletişim Kanalları */}
