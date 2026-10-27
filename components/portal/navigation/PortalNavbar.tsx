@@ -41,7 +41,7 @@ export function PortalNavbar({ user, pendingApprovalsCount }: Props) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur shadow-sm">
+    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href="/anasayfa" className="flex items-center py-3">
@@ -73,7 +73,7 @@ export function PortalNavbar({ user, pendingApprovalsCount }: Props) {
                 <Icon className={cn("h-4 w-4", isActive ? "text-blue-700" : "text-gray-500")} />
                 <span>{item.label}</span>
                 {item.badge && (
-                  <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white shadow-sm animate-pulse">
+                  <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white shadow-sm">
                     {item.badge}
                   </span>
                 )}

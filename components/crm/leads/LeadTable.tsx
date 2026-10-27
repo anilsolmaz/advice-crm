@@ -482,7 +482,7 @@ export function LeadTable({
                           className={cn(
                             "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold",
                             overdue
-                              ? "bg-red-600 text-white animate-pulse"
+                              ? "bg-red-600 text-white"
                               : today
                               ? "bg-blue-100 text-blue-800"
                               : "bg-slate-100 text-slate-700",

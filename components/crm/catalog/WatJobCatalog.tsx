@@ -307,7 +307,7 @@ export function WatJobCatalog({ initialJobs = [], watStudents = [] }: Props) {
 
       {/* ── ADD NEW WAT JOB MODAL (ALL 22 FIELDS FROM §4) ─────────────────── */}
       {isAddOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="flex h-full max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 bg-[#0f172a] px-6 py-4 text-white">
               <div>
@@ -724,7 +724,7 @@ export function WatJobCatalog({ initialJobs = [], watStudents = [] }: Props) {
 
       {/* ── JOB DETAIL + STUDENT LINK GENERATOR MODAL (§4) ────────────────── */}
       {selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="flex h-full max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             {/* Header */}
             <div className="flex items-start justify-between border-b border-slate-200 bg-[#0f172a] p-5 text-white">

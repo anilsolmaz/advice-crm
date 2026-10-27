@@ -63,7 +63,7 @@ export function ProgramStepperWizard({ program, steps }: Props) {
                   {step.isCompleted ? (
                     <Check className="h-5 w-5 stroke-[2.5]" />
                   ) : step.isCurrent ? (
-                    <Clock className="h-5 w-5 animate-spin-slow text-blue-600" />
+                    <Clock className="h-5 w-5 text-blue-600" />
                   ) : (
                     <span>{step.id}</span>
                   )}

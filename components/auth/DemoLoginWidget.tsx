@@ -56,7 +56,7 @@ export function DemoLoginWidget({ onSelectAccount }: DemoLoginWidgetProps) {
   return (
     <div className="fixed bottom-3 right-3 z-50 font-sans select-none">
       {open ? (
-        <div className="w-64 rounded-2xl bg-[#0f172a]/95 text-white p-3 shadow-2xl border border-slate-700/80 backdrop-blur-md">
+        <div className="w-64 rounded-2xl bg-[#0f172a] text-white p-3 shadow-xl border border-slate-700/80">
           <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
             <div className="flex items-center gap-1.5 text-xs font-bold text-sky-400">
               <FlaskConical className="h-3.5 w-3.5" />
@@ -115,7 +115,7 @@ export function DemoLoginWidget({ onSelectAccount }: DemoLoginWidgetProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 rounded-full bg-[#0f172a]/90 hover:bg-[#0f172a] text-white px-3.5 py-2 text-xs font-bold shadow-xl border border-slate-700 backdrop-blur"
+          className="flex items-center gap-2 rounded-full bg-[#0f172a] hover:bg-slate-800 text-white px-3.5 py-2 text-xs font-bold shadow-lg border border-slate-700"
         >
           <FlaskConical className="h-3.5 w-3.5 text-sky-400" />
           <span>Demo Giriş</span>

@@ -109,8 +109,8 @@ export function LeadDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="flex h-full max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+      <div className="flex h-full max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         {/* ── Modal Header ──────────────────────────────────────────── */}
         <div className="flex items-start justify-between border-b border-slate-200 bg-[#0f172a] p-5 text-white">
           <div className="flex items-center gap-3">

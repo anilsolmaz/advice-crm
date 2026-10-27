@@ -226,8 +226,8 @@ export function InteractiveDocumentGrid({
 
       {/* Instant Document Upload / View Modal */}
       {selectedDocConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
               <div className="flex items-center gap-2.5">
                 <FileText className="h-5 w-5 text-[#1e3a8a]" />

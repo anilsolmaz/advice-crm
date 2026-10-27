@@ -365,7 +365,7 @@ export default async function DashboardPage() {
               {overdueInstallmentsRaw.length > 0 ? formatCurrencyMap(overdueTotals) : "0.00"}
             </p>
             <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-rose-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
               {overdueInstallmentsRaw.length} taksit vadesi geçmiş!
             </div>
           </div>

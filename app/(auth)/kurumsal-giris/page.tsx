@@ -55,8 +55,7 @@ export default function CorporateLoginPage() {
           className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-30"
           style={{
             background:
-              "radial-gradient(circle at 40% 40%, rgba(56, 189, 248, 0.25) 0%, rgba(30, 58, 138, 0.25) 45%, rgba(15, 23, 42, 0) 70%)",
-            filter: "blur(60px)",
+              "radial-gradient(circle at 40% 40%, rgba(56, 189, 248, 0.2) 0%, rgba(30, 58, 138, 0.2) 45%, rgba(15, 23, 42, 0) 70%)",
           }}
         />
       </div>

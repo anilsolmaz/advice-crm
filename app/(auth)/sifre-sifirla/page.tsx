@@ -59,7 +59,7 @@ export default function SifreSifirlaPage() {
         </Link>
 
         {/* Card */}
-        <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 backdrop-blur-2xl shadow-2xl">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/90 p-8 shadow-xl">
           <div className="mb-6 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
               <Mail className="h-6 w-6" />

@@ -113,8 +113,7 @@ export function AdvisorDashboardView({
   return (
     <div className="space-y-8">
       {/* 1. Danışman Hero Banner */}
-      <div className="rounded-3xl border border-gray-200/80 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+      <div className="rounded-3xl border border-gray-200/80 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2">
@@ -141,7 +140,7 @@ export function AdvisorDashboardView({
             </Link>
             <Link
               href="/approvals"
-              className="flex items-center gap-2 rounded-xl bg-white/10 border border-white/20 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition-all backdrop-blur-sm"
+              className="flex items-center gap-2 rounded-xl bg-white/10 border border-white/20 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
             >
               <Bell className="h-4 w-4 text-amber-300" />
               Onay Kuyruğu ({myPendingApprovalsCount})

@@ -154,11 +154,9 @@ export default function StudentLoginPage() {
           className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-50"
           style={{
             background:
-              "radial-gradient(circle at 40% 40%, rgba(30, 58, 138, 0.22) 0%, rgba(186, 230, 253, 0.22) 45%, rgba(248, 250, 252, 0) 70%)",
-            filter: "blur(60px)",
+              "radial-gradient(circle at 40% 40%, rgba(30, 58, 138, 0.18) 0%, rgba(186, 230, 253, 0.15) 45%, rgba(248, 250, 252, 0) 70%)",
           }}
         />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-slate-200/70 blur-[90px]" />
         <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:28px_28px] opacity-35" />
       </div>
 

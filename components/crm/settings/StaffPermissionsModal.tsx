@@ -123,7 +123,7 @@ export function StaffPermissionsModal({ user, currentUserId, isOpen, onClose }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl border border-gray-100">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">

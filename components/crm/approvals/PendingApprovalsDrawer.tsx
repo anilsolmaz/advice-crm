@@ -76,7 +76,7 @@ export function PendingApprovalsDrawer({ isOpen, onClose, approvals }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50">
       <div className="flex h-full w-full max-w-4xl flex-col bg-white shadow-2xl">
         {/* Top bar */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">

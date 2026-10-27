@@ -242,7 +242,7 @@ export function PartnerSchoolPool({
 
       {/* Add Partner School Modal */}
       {isAddOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between bg-[#0f172a] px-6 py-4 text-white">
               <h3 className="text-sm font-bold">
