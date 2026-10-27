@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -231,6 +231,37 @@ export function StudentDetailView({
   const notes = student.advisorNotes;
   const applications = student.academicApplications || [];
   const jobAssignments = student.watJobAssignments || [];
+
+  const paymentSummary = useMemo(() => {
+    if (!payments || payments.length === 0) return null;
+    const primaryCurrency = payments[0]?.currency || "USD";
+    const sameCurrencyPayments = payments.filter((p: any) => p.currency === primaryCurrency);
+
+    const total = sameCurrencyPayments.reduce(
+      (sum: number, p: any) => sum + Number(p.totalAmount || 0),
+      0,
+    );
+    const paid = sameCurrencyPayments.reduce((pSum: number, p: any) => {
+      const instPaid = (p.installments || [])
+        .filter((inst: any) => inst.isPaid)
+        .reduce((iSum: number, inst: any) => iSum + Number(inst.amount || 0), 0);
+      return pSum + instPaid;
+    }, 0);
+
+    const isFullyPaid =
+      (sameCurrencyPayments.every((p: any) => p.status === "PAID") || (total > 0 && paid >= total));
+    const remaining = Math.max(0, total - paid);
+    const percent = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
+
+    return {
+      total,
+      paid,
+      remaining,
+      percent,
+      currency: primaryCurrency,
+      isFullyPaid,
+    };
+  }, [payments]);
 
   function handleToggleInstallment(installmentId: string, currentPaid: boolean) {
     startTransition(() => {
@@ -611,16 +642,35 @@ export function StudentDetailView({
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
             Mali Bakiye Özeti
           </p>
-          {payments && payments.length > 0 ? (
+          {paymentSummary ? (
             <div>
-              <p className="text-lg font-bold text-slate-900">
-                {String(payments[0].totalAmount)} {payments[0].currency}
+              <p className="text-lg font-bold text-slate-900 tracking-tight">
+                {paymentSummary.paid.toLocaleString("tr-TR")} / {paymentSummary.total.toLocaleString("tr-TR")}{" "}
+                <span className="text-xs font-semibold text-slate-500">{paymentSummary.currency}</span>
               </p>
-              <p className="text-xs text-emerald-600 font-medium mt-0.5">
-                {payments[0].status === "PAID"
-                  ? "✓ Tüm Ödemeler Tamamlandı"
-                  : "Taksitler Devam Ediyor"}
-              </p>
+              <div className="flex items-center gap-1.5 mt-0.5 text-xs">
+                {paymentSummary.isFullyPaid ? (
+                  <span className="font-semibold text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Tüm Ödemeler Tamamlandı
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-semibold text-amber-600">Taksitler Devam Ediyor</span>
+                    <span className="text-slate-400">
+                      · Kalan: {paymentSummary.remaining.toLocaleString("tr-TR")} {paymentSummary.currency}
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="mt-2 h-1.5 w-full max-w-[170px] overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-300",
+                    paymentSummary.isFullyPaid ? "bg-emerald-500" : "bg-blue-600",
+                  )}
+                  style={{ width: `${paymentSummary.percent}%` }}
+                />
+              </div>
             </div>
           ) : (
             <p className="text-xs text-slate-400 italic">Ödeme planı yok</p>
