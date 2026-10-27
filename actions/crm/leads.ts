@@ -47,9 +47,12 @@ export async function createLead(
 ): Promise<LeadFormState> {
   const advisor = await requireStaff();
 
+  const noPhone = formData.get("noPhone") === "true";
+  const noEmail = formData.get("noEmail") === "true";
+
   const fullName = (formData.get("fullName") as string)?.trim();
-  const email = (formData.get("email") as string)?.trim().toLowerCase();
-  const phone = (formData.get("phone") as string)?.trim();
+  let email = (formData.get("email") as string)?.trim().toLowerCase();
+  let phone = (formData.get("phone") as string)?.trim();
   const program = formData.get("program") as Program;
   const source = ((formData.get("source") as LeadSource) || "WEBSITE") as LeadSource;
   const sponsor = (formData.get("sponsor") as string)?.trim() || null;
@@ -57,31 +60,55 @@ export async function createLead(
   const gender = (formData.get("gender") as string)?.trim() || null;
   const avatarUrl = (formData.get("avatarUrl") as string)?.trim() || null;
   const visaStatus = (formData.get("visaStatus") as string)?.trim() || null;
-  const followUpAtRaw = formData.get("followUpAt") as string | null;
+  const followUpAtRaw = (formData.get("followUpAt") as string)?.trim() || null;
   const notes = (formData.get("notes") as string)?.trim() || null;
   const forceCreate = formData.get("forceCreate") === "true";
 
-  if (!fullName || !email || !phone || !program) {
-    return { success: false, error: "İsim, e-posta, telefon ve program zorunludur." };
+  if (!fullName) {
+    return { success: false, error: "Adayın ad soyadı zorunludur." };
+  }
+  if (!program) {
+    return { success: false, error: "İlgilenilen program seçilmelidir." };
   }
 
-  // Duplicate check by email or normalized phone
-  const normalizedPhone = phone.replace(/\s+/g, "");
-  const existingLead = await prisma.lead.findFirst({
-    where: {
-      OR: [
-        { email },
-        { phone: { contains: normalizedPhone.slice(-10) } },
-      ],
-    },
-  });
+  if (noPhone) {
+    phone = "Belirtilmedi";
+  } else if (!phone) {
+    return { success: false, error: "Telefon numarası zorunludur veya 'Telefon bilgisi yok' kutucuğunu işaretleyin." };
+  }
 
-  if (existingLead && !forceCreate) {
-    return {
-      success: false,
-      isDuplicate: true,
-      error: `Mükerrer Kayıt Uyarısı: "${existingLead.fullName}" (${existingLead.phone} / ${existingLead.email}) zaten sistemde kayıtlı!`,
-    };
+  if (noEmail) {
+    email = `bilinmiyor-${Date.now()}-${Math.floor(Math.random() * 1000)}@advice.internal`;
+  } else if (!email) {
+    return { success: false, error: "E-posta adresi zorunludur veya 'E-posta bilgisi yok' kutucuğunu işaretleyin." };
+  }
+
+  // Duplicate check by email or normalized phone (only when real values provided)
+  const duplicateConditions: Array<{ email?: string; phone?: { contains: string } }> = [];
+  if (!noEmail && email && !email.includes("@advice.internal")) {
+    duplicateConditions.push({ email });
+  }
+  if (!noPhone && phone && phone !== "Belirtilmedi") {
+    const normalizedPhone = phone.replace(/\D/g, "");
+    if (normalizedPhone.length >= 7) {
+      duplicateConditions.push({ phone: { contains: normalizedPhone.slice(-10) } });
+    }
+  }
+
+  if (duplicateConditions.length > 0 && !forceCreate) {
+    const existingLead = await prisma.lead.findFirst({
+      where: {
+        OR: duplicateConditions,
+      },
+    });
+
+    if (existingLead) {
+      return {
+        success: false,
+        isDuplicate: true,
+        error: `Mükerrer Kayıt Uyarısı: "${existingLead.fullName}" (${existingLead.phone} / ${existingLead.email}) zaten sistemde kayıtlı!`,
+      };
+    }
   }
 
   const assignedAdvisorId = (formData.get("advisorId") as string) || advisor.id;
@@ -102,7 +129,7 @@ export async function createLead(
       gender,
       avatarUrl,
       visaStatus,
-      followUpAt: followUpAtRaw ? new Date(followUpAtRaw) : null,
+      followUpAt: followUpAtRaw && !isNaN(Date.parse(followUpAtRaw)) ? new Date(followUpAtRaw) : null,
       notes: formattedNotes,
       advisorId: assignedAdvisorId,
       status: "INTERESTED",

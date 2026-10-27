@@ -543,7 +543,9 @@ export function LeadDetailModal({
     });
   }
 
-  const cleanWaPhone = lead.phone.replace(/\D/g, "").replace(/^0/, "");
+  const cleanWaPhone = lead.phone ? lead.phone.replace(/\D/g, "").replace(/^0/, "") : "";
+  const hasValidPhone = Boolean(lead.phone && lead.phone !== "Belirtilmedi" && cleanWaPhone.length >= 7);
+  const hasValidEmail = Boolean(lead.email && !lead.email.includes("@advice.internal"));
   const advisorDisplay = cleanAdvisorLabel(lead.advisorName);
 
   return (
@@ -572,21 +574,15 @@ export function LeadDetailModal({
 
                 {/* Telefon, E-Posta ve Şehir: İsim altında tatlı ikonlarla */}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs">
-                  {lead.phone && (
-                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-800">
-                      <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      {lead.phone}
-                    </span>
-                  )}
-                  {lead.email && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <span className="inline-flex items-center gap-1.5 font-medium text-slate-600">
-                        <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        {lead.email}
-                      </span>
-                    </>
-                  )}
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-800">
+                    <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    {hasValidPhone ? lead.phone : "Telefon Yok"}
+                  </span>
+                  <span className="text-slate-300">·</span>
+                  <span className="inline-flex items-center gap-1.5 font-medium text-slate-600">
+                    <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    {hasValidEmail ? lead.email : "E-Posta Yok"}
+                  </span>
                   {lead.city && (
                     <>
                       <span className="text-slate-300">·</span>
@@ -966,35 +962,47 @@ export function LeadDetailModal({
                 {/* WhatsApp Kartı */}
                 <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2.5 transition-all">
                   <span className="text-sm font-bold text-emerald-950 font-mono">
-                    {lead.phone}
+                    {hasValidPhone ? lead.phone : "Telefon bilgisi yok"}
                   </span>
-                  <a
-                    href={`https://wa.me/90${cleanWaPhone}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() =>
-                      handleLogEvent("WhatsApp üzerinden görüşme açıldı")
-                    }
-                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 shadow-xs transition-colors shrink-0"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    WhatsApp&apos;ı Aç
-                  </a>
+                  {hasValidPhone ? (
+                    <a
+                      href={`https://wa.me/90${cleanWaPhone}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() =>
+                        handleLogEvent("WhatsApp üzerinden görüşme açıldı")
+                      }
+                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 shadow-xs transition-colors shrink-0"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp&apos;ı Aç
+                    </a>
+                  ) : (
+                    <span className="rounded-lg bg-slate-200/80 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                      Kayıtlı Numara Yok
+                    </span>
+                  )}
                 </div>
 
                 {/* E-Posta Kartı */}
                 <div className="flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50/70 px-3.5 py-2.5 transition-all">
                   <span className="text-sm font-semibold text-sky-950 truncate max-w-[220px]">
-                    {lead.email}
+                    {hasValidEmail ? lead.email : "E-posta bilgisi yok"}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailModal(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 shadow-xs transition-colors shrink-0"
-                  >
-                    <Mail className="h-4 w-4 text-sky-300" />
-                    Mail Gönder
-                  </button>
+                  {hasValidEmail ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailModal(true)}
+                      className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-800 shadow-xs transition-colors shrink-0"
+                    >
+                      <Mail className="h-4 w-4 text-sky-300" />
+                      Mail Gönder
+                    </button>
+                  ) : (
+                    <span className="rounded-lg bg-slate-200/80 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                      Kayıtlı E-Posta Yok
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
