@@ -169,7 +169,7 @@ export async function sendDirectEmailAction(params: {
         hour: "2-digit",
         minute: "2-digit",
       });
-      const emailLogEntry = `[${dateStr} · ${staff.fullName} · E-Posta Gönderimi]: Konu: "${params.subject}"`;
+      const emailLogEntry = `[${dateStr} · ${staff.fullName} · E-Posta Gönderildi]: Konu: "${params.subject}"`;
       const updatedNotes = existingLead?.notes
         ? `${existingLead.notes}\n\n${emailLogEntry}`
         : emailLogEntry;

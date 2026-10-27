@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { X, AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react";
 import type { CRMStudentProfile } from "@/types/crm";
 import { submitProfileChangeForApproval } from "@/actions/portal/approvals";
+import { formatTurkishPhone } from "@/lib/utils/phone";
 
 interface Props {
   studentId: string;
@@ -242,14 +243,16 @@ function InputGroup({
   defaultValue?: string;
   placeholder?: string;
 }) {
+  const isPhone = name.toLowerCase().includes("phone");
   return (
     <div>
       <label className="block text-xs font-semibold text-gray-700 mb-1">{label}</label>
       <input
-        type="text"
+        type={isPhone ? "tel" : "text"}
         name={name}
         defaultValue={defaultValue}
-        placeholder={placeholder}
+        placeholder={isPhone ? (placeholder || "(5XX) XXX XX XX") : placeholder}
+        onChange={isPhone ? (e) => { e.target.value = formatTurkishPhone(e.target.value); } : undefined}
         className="w-full rounded-xl border border-gray-200 px-3.5 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     </div>

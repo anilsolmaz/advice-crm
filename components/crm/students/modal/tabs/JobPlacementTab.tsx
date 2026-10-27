@@ -10,6 +10,7 @@ import {
   updateSummerCampDetail,
   updateVisaDetail,
 } from "@/actions/crm/students";
+import { formatTurkishPhone } from "@/lib/utils/phone";
 
 const WAT_SPONSORS = ["CIEE", "AWA", "AYUSA", "InterExchange", "Camp America", "BUNAC", "Diğer"] as const;
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"] as const;
@@ -317,10 +318,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function FormField({ label, name, defaultValue, type = "text", step, placeholder }: { label: string; name: string; defaultValue?: string; type?: string; step?: string; placeholder?: string }) {
+  const isPhone = type === "tel" || name.toLowerCase().includes("phone");
   return (
     <div>
       <label htmlFor={name} className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</label>
-      <input id={name} name={name} type={type} defaultValue={defaultValue} step={step} placeholder={placeholder} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200" />
+      <input
+        id={name}
+        name={name}
+        type={isPhone ? "tel" : type}
+        defaultValue={defaultValue}
+        step={step}
+        placeholder={isPhone ? (placeholder || "(5XX) XXX XX XX") : placeholder}
+        onChange={isPhone ? (e) => { e.target.value = formatTurkishPhone(e.target.value); } : undefined}
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200"
+      />
     </div>
   );
 }

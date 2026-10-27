@@ -26,6 +26,7 @@ import {
   ClipboardList,
   ShieldCheck,
 } from "lucide-react";
+import { formatTurkishPhone } from "@/lib/utils/phone";
 import { createStaffUser, toggleUserStatus, type UserActionState } from "@/actions/crm/users";
 import { createCustomRole, deleteCustomRole } from "@/actions/crm/roles";
 import {
@@ -837,7 +838,10 @@ export default function SettingsClient({ initialUsers, customRoles = [], current
                   <input
                     type="tel"
                     name="phone"
-                    placeholder="0532 000 0000"
+                    placeholder="(5XX) XXX XX XX"
+                    onChange={(e) => {
+                      e.target.value = formatTurkishPhone(e.target.value);
+                    }}
                     className="w-full rounded-xl border border-gray-200 p-2.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
                   />
                 </div>

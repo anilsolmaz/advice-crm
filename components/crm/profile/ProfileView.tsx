@@ -20,6 +20,7 @@ import {
 import { updateProfileDetails, changePassword, type ProfileActionState } from "@/actions/crm/profile";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { formatDate } from "@/lib/utils/date";
+import { formatTurkishPhone } from "@/lib/utils/phone";
 
 function SaveButton({ label = "Değişiklikleri Kaydet" }: { label?: string }) {
   const { pending } = useFormStatus();
@@ -148,7 +149,10 @@ export function ProfileView({ user }: { user: UserData }) {
                   type="tel"
                   name="phone"
                   defaultValue={user.phone || ""}
-                  placeholder="0532 000 0000"
+                  placeholder="(5XX) XXX XX XX"
+                  onChange={(e) => {
+                    e.target.value = formatTurkishPhone(e.target.value);
+                  }}
                   className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-3 text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>

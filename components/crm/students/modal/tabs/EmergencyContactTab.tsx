@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { Save } from "lucide-react";
 import type { CRMStudentProfile } from "@/types/crm";
 import { updateStudentProfile } from "@/actions/crm/students";
+import { formatTurkishPhone } from "@/lib/utils/phone";
 
 interface Props {
   profile: CRMStudentProfile | null;
@@ -74,7 +75,15 @@ function FormField({ label, name, defaultValue, type = "text" }: { label: string
   return (
     <div>
       <label htmlFor={name} className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</label>
-      <input id={name} name={name} type={type} defaultValue={defaultValue} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200" />
+      <input
+        id={name}
+        name={name}
+        type={type}
+        defaultValue={defaultValue}
+        placeholder={type === "tel" ? "(5XX) XXX XX XX" : undefined}
+        onChange={type === "tel" ? (e) => { e.target.value = formatTurkishPhone(e.target.value); } : undefined}
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-200"
+      />
     </div>
   );
 }

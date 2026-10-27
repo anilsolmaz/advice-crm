@@ -6,6 +6,7 @@ import { Plus, Trash2, Save } from "lucide-react";
 import type { CRMStudentDetail } from "@/types/crm";
 import { updateStudentProfile } from "@/actions/crm/students";
 import { formatDate } from "@/lib/utils/date";
+import { formatTurkishPhone } from "@/lib/utils/phone";
 
 type SocialAccount = { platform: string; handle: string };
 type TravelCompanion = { name: string; phone: string };
@@ -187,15 +188,15 @@ export function PersonalTab({ student }: Props) {
               className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm"
             />
             <input
-              type="text"
-              placeholder="Telefon"
+              type="tel"
+              placeholder="(5XX) XXX XX XX"
               value={c.phone}
               onChange={(e) => {
                 const next = [...companions];
-                next[i].phone = e.target.value;
+                next[i].phone = formatTurkishPhone(e.target.value);
                 setCompanions(next);
               }}
-              className="w-40 rounded-lg border border-gray-200 px-3 py-1.5 text-sm"
+              className="w-44 rounded-lg border border-gray-200 px-3 py-1.5 text-sm"
             />
             <button
               type="button"

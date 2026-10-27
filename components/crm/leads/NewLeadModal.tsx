@@ -23,6 +23,7 @@ import {
 import { createLead, type LeadFormState } from "@/actions/crm/leads";
 import { PROGRAM_LABELS, LEAD_SOURCE_LABELS } from "@/types/crm";
 import { BulkLeadImport } from "@/components/crm/leads/BulkLeadImport";
+import { formatTurkishPhone } from "@/lib/utils/phone";
 import { cn } from "@/lib/utils/cn";
 
 function SubmitButton() {
@@ -38,29 +39,6 @@ function SubmitButton() {
       {pending ? "Kaydediliyor…" : "Adayı Kaydet"}
     </button>
   );
-}
-
-function formatTurkishPhone(raw: string): string {
-  let digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("90") && digits.length > 2) {
-    digits = digits.slice(2);
-  }
-  if (digits.startsWith("0")) {
-    digits = digits.slice(1);
-  }
-  digits = digits.slice(0, 10);
-
-  if (!digits) return "";
-  if (digits.length <= 3) {
-    return `(${digits}`;
-  }
-  if (digits.length <= 6) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  }
-  if (digits.length <= 8) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6)}`;
-  }
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
 }
 
 interface Props {
@@ -399,25 +377,6 @@ export function NewLeadModal({
                           placeholder="Örn: İstanbul, Ankara, İzmir..."
                           className="w-full rounded-lg border border-slate-200 py-1.5 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none bg-white"
                         />
-                      </div>
-                    </div>
-
-                    {/* Cinsiyet */}
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-700">
-                        Cinsiyet
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        <select
-                          name="gender"
-                          defaultValue=""
-                          className="w-full rounded-lg border border-slate-200 py-1.5 pl-9 pr-3 text-xs text-slate-800 focus:border-blue-500 focus:outline-none bg-white"
-                        >
-                          <option value="">Seçiniz (Opsiyonel)</option>
-                          <option value="FEMALE">Kadın</option>
-                          <option value="MALE">Erkek</option>
-                        </select>
                       </div>
                     </div>
 

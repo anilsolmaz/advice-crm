@@ -12,43 +12,82 @@ interface EmailComposeModalProps {
   leadId?: string;
   studentId?: string;
   onClose: () => void;
+  onSuccess?: (subject: string) => void;
 }
 
-const EMAIL_TEMPLATES = [
+export interface EmailTemplate {
+  id: string;
+  label: string;
+  subject: string;
+  getBody: (name: string, prog: string) => string;
+}
+
+export const LEAD_EMAIL_TEMPLATES: EmailTemplate[] = [
   {
-    id: "first_contact",
-    label: "İlk Temas & Program Bilgilendirmesi",
-    subject: "Advice Yurtdışı Eğitim — Başvurunuz Hakkında Bilgilendirme",
+    id: "lead_intro",
+    label: "İlk Tanıtım & Program Detayları",
+    subject: "Advice Yurtdışı Eğitim — Program Başvurunuz ve Detaylar",
     getBody: (name: string, prog: string) =>
-      `Merhaba ${name},\n\nAdvice Yurtdışı Eğitim'e göstermiş olduğunuz ilgi için teşekkür ederiz. ${prog} programı kapsamındaki güncel kontenjanlar, fiyatlandırma ve başvuru adımları hakkında detaylı bilgi vermek üzere sizinle iletişime geçmek istedik.\n\nMüsait olduğunuz bir zaman dilimini bu e-postaya yanıt olarak iletebilir veya doğrudan danışman hattımızdan bize ulaşabilirsiniz.\n\nSevgiler,\nAdvice Yurtdışı Eğitim Danışmanlık Ekibi`,
+      `Merhaba ${name},\n\nAdvice Yurtdışı Eğitim'e göstermiş olduğunuz ilgi için teşekkür ederiz. İlgilendiğiniz ${prog} programı kapsamındaki güncel kontenjanlar, başvuru şartları ve süreç adımları hakkında size detaylı bilgi sunmak isteriz.\n\nSizin için en uygun dönemi belirlemek ve sorularınızı yanıtlamak üzere bu e-postaya yanıt verebilir veya doğrudan danışman hattımızdan bize ulaşabilirsiniz.\n\nİyi günler dileriz,\nAdvice Yurtdışı Eğitim Danışmanlık Ekibi`,
   },
   {
-    id: "missing_docs",
-    label: "Eksik Evrak Hatırlatması",
+    id: "lead_followup",
+    label: "Görüşme Sonrası Bilgilendirme & Broşür",
+    subject: "Görüşmemiz Doğrultusunda — Advice Program Bilgilendirmesi",
+    getBody: (name: string, prog: string) =>
+      `Merhaba ${name},\n\nBugün gerçekleştirdiğimiz görüşmeye istinaden, ${prog} programına dair incelediğimiz detayları ve resmi başvuru koşullarını bilginize sunarız.\n\nKarar aşamanızda aklınıza takılan her türlü konuda danışmanınız olarak yardımcı olmaktan mutluluk duyarım. Görüşmemiz doğrultusunda dosyanızı takipte tutuyoruz.\n\nSevgiler,\nAdvice Yurtdışı Eğitim Danışmanınız`,
+  },
+  {
+    id: "lead_office_invite",
+    label: "Ofis Ziyareti & Yüz Yüze Danışmanlık Daveti",
+    subject: "Advice Ofisimize Davetlisiniz — Birebir Bilgilendirme Randevusu",
+    getBody: (name: string, prog: string) =>
+      `Merhaba ${name},\n\n${prog} programındaki hedeflerinizi daha detaylı planlamak, geçmiş dönem deneyimlerini aktarmak ve kafanızdaki tüm soru işaretlerini gidermek adına sizi ofisimizde kahve eşliğinde yüz yüze görüşmeye davet ediyoruz.\n\nMüsait olduğunuz gün ve saati iletirseniz randevunuzu memnuniyetle organize edebiliriz.\n\nSaygılarımızla,\nAdvice Yurtdışı Eğitim Ekibi`,
+  },
+  {
+    id: "lead_early_bird",
+    label: "Erken Kayıt & Kontenjan Fırsatı",
+    subject: "Önemli Fırsat: Dönem Kontenjanları ve Erken Kayıt Avantajı",
+    getBody: (name: string, prog: string) =>
+      `Merhaba ${name},\n\nİlgilendiğiniz ${prog} programında yeni dönem kontenjanları hızla dolmaktadır. Erken kayıt dönemine özel fiyatlandırma ve yerleşim avantajlarından yararlanabilmeniz için başvurunuzu geciktirmemenizi öneririz.\n\nKayıt adımları için doğrudan danışmanınızla iletişime geçebilirsiniz.\n\nİyi çalışmalar,\nAdvice Yurtdışı Eğitim Başvuru Koordinatörlüğü`,
+  },
+];
+
+export const STUDENT_EMAIL_TEMPLATES: EmailTemplate[] = [
+  {
+    id: "student_portal_docs",
+    label: "Öğrenci Portalı & Eksik Evrak Hatırlatması",
     subject: "Önemli: Dosyanızdaki Eksik Evraklar Hakkında — Advice Yurtdışı Eğitim",
     getBody: (name: string, prog: string) =>
-      `Merhaba ${name},\n\n${prog} başvuru sürecinizin gecikmemesi adına öğrenci portalınızdaki eksik belgelerinizi (Pasaport, Öğrenci Belgesi, Transkript, İngilizce CV) en kısa sürede sisteme yüklemenizi rica ederiz.\n\nÖğrenci Portalı Giriş: http://localhost:3000/login\n\nSevgiler,\nAdvice Yurtdışı Eğitim Operasyon Ekibi`,
+      `Merhaba ${name},\n\n${prog} programı başvuru dosyanızın zamanında tamamlanabilmesi için öğrenci portalınızdaki eksik evraklarınızı en kısa sürede sisteme yüklemenizi rica ederiz.\n\nÖğrenci Portalı: http://localhost:3000/login\n\nSevgiler,\nAdvice Yurtdışı Eğitim Operasyon Ekibi`,
   },
   {
-    id: "sponsor_job_offer",
-    label: "Sponsor & İş Teklifi Onayı",
-    subject: "Work & Travel İş Teklifiniz Hazır — Advice Yurtdışı Eğitim",
-    getBody: (name: string) =>
-      `Merhaba ${name},\n\nSizin için uygun görülen Work & Travel iş teklifi öğrenci portalınıza tanımlanmıştır. Lütfen portalınıza giriş yaparak iş detaylarını, saatlik ücreti ve konaklama şartlarını inceleyip onayınızı iletiniz.\n\nSevgiler,\nAdvice Yurtdışı Eğitim WAT Departmanı`,
+    id: "student_job_offer",
+    label: "İş & Sponsor Teklifi Onayı",
+    subject: "İş Teklifiniz Hazır — Advice Yurtdışı Eğitim",
+    getBody: (name: string, prog: string) =>
+      `Merhaba ${name},\n\n${prog} programınız kapsamında tanımlanan resmi iş / yerleşim teklifiniz öğrenci portalınıza yüklenmiştir. Lütfen portalınıza giriş yaparak şartları inceleyip onayınızı iletiniz.\n\nSevgiler,\nAdvice Yurtdışı Eğitim Departmanı`,
   },
   {
-    id: "payment_reminder",
+    id: "student_payment",
     label: "Ödeme / Taksit Vadesi Hatırlatması",
     subject: "Program Taksit Ödeme Hatırlatması — Advice Yurtdışı Eğitim",
     getBody: (name: string, prog: string) =>
-      `Merhaba ${name},\n\n${prog} programınıza ait yaklaşan taksit ödemenizi vadesinde gerçekleştirip dekontunuzu öğrenci portalınızdan veya danışmanınıza iletmenizi rica ederiz.\n\nİyi günler dileriz,\nAdvice Yurtdışı Eğitim Finans & Muhasebe Birimi`,
+      `Merhaba ${name},\n\n${prog} programınıza ait yaklaşan taksit ödemenizi vadesinde gerçekleştirip dekontunuzu portalınız üzerinden iletmenizi rica ederiz.\n\nİyi günler dileriz,\nAdvice Yurtdışı Eğitim Finans & Muhasebe Birimi`,
   },
   {
-    id: "visa_appointment",
+    id: "student_visa",
     label: "Vize Randevu & DS-160 Bilgilendirmesi",
     subject: "Vize Randevunuz ve DS-160 Formu Hakkında — Advice Yurtdışı Eğitim",
-    getBody: (name: string) =>
-      `Merhaba ${name},\n\nVize dosyanızın hazırlanabilmesi için öğrenci portalınızdaki DS-160 / Vize bilgi alanlarını eksiksiz doldurmanız ve randevu tarihinizden önce oryantasyon dosyanızı kontrol etmeniz gerekmektedir.\n\nSevgiler,\nAdvice Yurtdışı Eğitim Vize Departmanı`,
+    getBody: (name: string, prog: string) =>
+      `Merhaba ${name},\n\n${prog} vize dosyanızın hazırlanabilmesi için DS-160 bilgilerinizi eksiksiz tamamlamanız ve randevu öncesi oryantasyon dosyanızı incelemeniz gerekmektedir.\n\nSevgiler,\nAdvice Yurtdışı Eğitim Vize Departmanı`,
+  },
+  {
+    id: "student_orientation",
+    label: "Oryantasyon & Çıkış Öncesi Bilgilendirme",
+    subject: "Uçuş Öncesi Oryantasyon Bilgilendirmesi — Advice Yurtdışı Eğitim",
+    getBody: (name: string, prog: string) =>
+      `Merhaba ${name},\n\n${prog} yolculuğunuz öncesinde gerekli tüm yasal belgeleriniz, acil durum hatları ve varış detayları hakkında düzenleyeceğimiz oryantasyon oturumuna katılımınız önemlidir.\n\nİyi yolculuklar dileriz,\nAdvice Yurtdışı Eğitim Destek Ekibi`,
   },
 ];
 
@@ -59,8 +98,12 @@ export function EmailComposeModal({
   leadId,
   studentId,
   onClose,
+  onSuccess,
 }: EmailComposeModalProps) {
-  const defaultTpl = EMAIL_TEMPLATES[0];
+  const isLead = Boolean(leadId) || !studentId;
+  const templates = isLead ? LEAD_EMAIL_TEMPLATES : STUDENT_EMAIL_TEMPLATES;
+
+  const defaultTpl = templates[0];
   const [selectedTpl, setSelectedTpl] = useState(defaultTpl.id);
   const [subject, setSubject] = useState(defaultTpl.subject);
   const [body, setBody] = useState(
@@ -74,7 +117,7 @@ export function EmailComposeModal({
 
   function handleSelectTemplate(tplId: string) {
     setSelectedTpl(tplId);
-    const found = EMAIL_TEMPLATES.find((t) => t.id === tplId);
+    const found = templates.find((t) => t.id === tplId);
     if (found) {
       setSubject(found.subject);
       setBody(found.getBody(recipientName, programLabel));
@@ -97,9 +140,12 @@ export function EmailComposeModal({
         setResult({
           success: true,
           message: res.simulated
-            ? "E-posta başarıyla kuyruğa alındı ve kişi geçmişine kaydedildi (SMTP/API anahtarı girildiğinde gerçek mail olarak iletilir)."
+            ? "E-posta başarıyla kuyruğa alındı ve kişi geçmişine kaydedildi."
             : "E-posta başarıyla gönderildi ve kişi geçmişine kaydedildi!",
         });
+        if (onSuccess) {
+          onSuccess(subject);
+        }
       } else {
         setResult({
           success: false,
@@ -116,7 +162,9 @@ export function EmailComposeModal({
           <div className="flex items-center gap-2.5">
             <Mail className="h-5 w-5 text-sky-400" />
             <div>
-              <h3 className="text-sm font-bold">Sistem Üzerinden E-Posta Gönder</h3>
+              <h3 className="text-sm font-bold">
+                {isLead ? "Adaya Bilgilendirme E-Postası Gönder" : "Öğrenciye E-Posta Gönder"}
+              </h3>
               <p className="text-[11px] text-slate-300">
                 Alıcı: {recipientName} ({recipientEmail})
               </p>
@@ -136,10 +184,10 @@ export function EmailComposeModal({
           <div>
             <label className="mb-1.5 flex items-center gap-1.5 font-bold text-slate-700">
               <Sparkles className="h-3.5 w-3.5 text-[#1e3a8a]" />
-              Hazır E-Posta Şablonu Seçin
+              {isLead ? "Aday İletişim Şablonları" : "Kayıtlı Öğrenci Şablonları"}
             </label>
             <div className="flex flex-wrap gap-1.5">
-              {EMAIL_TEMPLATES.map((tpl) => (
+              {templates.map((tpl) => (
                 <button
                   key={tpl.id}
                   type="button"
