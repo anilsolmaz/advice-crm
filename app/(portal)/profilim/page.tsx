@@ -9,8 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function StudentProfilePage() {
   const authUser = await requireStudent();
 
-  const student = await prisma.student.findUnique({
+  const student = await prisma.student.findFirst({
     where: { userId: authUser.id },
+    orderBy: { createdAt: "desc" },
     include: {
       profile: true,
       user: true,

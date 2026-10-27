@@ -3,8 +3,8 @@ import { requireStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, isOverdue } from "@/lib/utils/currency";
 import { formatDateShort } from "@/lib/utils/date";
-import { CreditCard, CheckCircle2, AlertCircle, Clock, Building2 } from "lucide-react";
-import { PAYMENT_STATUS_LABELS } from "@/types/crm";
+import { CheckCircle2, AlertCircle, Clock, Building2 } from "lucide-react";
+import { PAYMENT_STATUS_LABELS, PROGRAM_LABELS } from "@/types/crm";
 import { InstallmentProofButton } from "@/components/portal/payments/InstallmentProofButton";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +12,12 @@ export const dynamic = "force-dynamic";
 export default async function StudentPaymentsPage() {
   const authUser = await requireStudent();
 
-  const student = await prisma.student.findUnique({
+  const enrollments = await prisma.student.findMany({
     where: { userId: authUser.id },
+    orderBy: [{ termYear: "desc" }, { createdAt: "desc" }],
     include: {
       payments: {
+        orderBy: { createdAt: "desc" },
         include: {
           installments: {
             orderBy: { sequence: "asc" },
@@ -25,7 +27,7 @@ export default async function StudentPaymentsPage() {
     },
   });
 
-  if (!student) {
+  if (enrollments.length === 0) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-700">
         Öğrenci kaydınız bulunamadı.
@@ -33,78 +35,160 @@ export default async function StudentPaymentsPage() {
     );
   }
 
-  // Calculate totals
-  let totalAmount = 0;
-  let paidAmount = 0;
-  let currency = "USD";
+  const allPaymentsWithEnrollment = enrollments.flatMap((enrollment) =>
+    enrollment.payments.map((payment) => ({
+      ...payment,
+      enrollmentId: enrollment.id,
+      program: enrollment.program,
+      termYear: enrollment.termYear,
+      enrollmentLabel:
+        enrollment.enrollmentLabel ||
+        `${PROGRAM_LABELS[enrollment.program]} (${enrollment.termYear})`,
+    })),
+  );
 
-  student.payments.forEach((payment) => {
-    currency = payment.currency;
-    totalAmount += parseFloat(payment.totalAmount.toString());
+  // Group totals by currency (defaulting to USD if empty)
+  const currencyTotals: Record<
+    string,
+    { total: number; paid: number; remaining: number }
+  > = {};
+
+  allPaymentsWithEnrollment.forEach((payment) => {
+    const cur = payment.currency || "USD";
+    if (!currencyTotals[cur]) {
+      currencyTotals[cur] = { total: 0, paid: 0, remaining: 0 };
+    }
+    const tot = parseFloat(payment.totalAmount.toString());
+    currencyTotals[cur].total += tot;
     payment.installments.forEach((inst) => {
       if (inst.isPaid) {
-        paidAmount += parseFloat((inst.paidAmount ?? inst.amount).toString());
+        currencyTotals[cur].paid += parseFloat(
+          (inst.paidAmount ?? inst.amount).toString(),
+        );
       }
     });
+    currencyTotals[cur].remaining = Math.max(
+      0,
+      currencyTotals[cur].total - currencyTotals[cur].paid,
+    );
   });
 
-  const remainingAmount = Math.max(0, totalAmount - paidAmount);
+  const currencyEntries = Object.entries(currencyTotals);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Ödemelerim & Taksit Planı</h1>
+        <h1 className="text-xl font-bold text-gray-900">
+          Ödemelerim & Taksit Planı
+        </h1>
         <p className="text-xs text-gray-500 mt-1">
-          Program ücretinizin ödeme detayları, taksit vadeleri ve banka hesap bilgilerimiz aşağıda yer almaktadır.
+          Kayıtlı olduğunuz tüm programlara ait ödeme planlarını, taksit
+          vadelerini ve dekont bildirimlerinizi tek bir ekrandan takip
+          edebilirsiniz.
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">Toplam Program Ücreti</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
-            {formatCurrency(totalAmount, currency as any)}
-          </p>
+      {/* Summary Cards across all programs */}
+      {currencyEntries.length === 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-medium text-gray-500">
+              Toplam Program Ücreti
+            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">$0</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 shadow-sm">
+            <p className="text-xs font-medium text-emerald-800">Ödenen Tutar</p>
+            <p className="text-2xl font-bold text-emerald-900 mt-1">$0</p>
+          </div>
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 shadow-sm">
+            <p className="text-xs font-medium text-blue-800">Kalan Bakiye</p>
+            <p className="text-2xl font-bold text-blue-900 mt-1">$0</p>
+          </div>
         </div>
+      ) : (
+        <div className="space-y-3">
+          {currencyEntries.map(([currency, stats]) => (
+            <div
+              key={currency}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+            >
+              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <p className="text-xs font-medium text-gray-500">
+                  Toplam Ücret ({currency})
+                </p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {formatCurrency(stats.total, currency as any)}
+                </p>
+              </div>
 
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 shadow-sm">
-          <p className="text-xs font-medium text-emerald-800">Ödenen Tutar</p>
-          <p className="text-2xl font-bold text-emerald-900 mt-1">
-            {formatCurrency(paidAmount, currency as any)}
-          </p>
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 shadow-sm">
+                <p className="text-xs font-medium text-emerald-800">
+                  Ödenen Tutar ({currency})
+                </p>
+                <p className="text-2xl font-bold text-emerald-900 mt-1">
+                  {formatCurrency(stats.paid, currency as any)}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 shadow-sm">
+                <p className="text-xs font-medium text-blue-800">
+                  Kalan Bakiye ({currency})
+                </p>
+                <p className="text-2xl font-bold text-blue-900 mt-1">
+                  {formatCurrency(stats.remaining, currency as any)}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
+      )}
 
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 shadow-sm">
-          <p className="text-xs font-medium text-blue-800">Kalan Bakiye</p>
-          <p className="text-2xl font-bold text-blue-900 mt-1">
-            {formatCurrency(remainingAmount, currency as any)}
-          </p>
-        </div>
-      </div>
-
-      {/* Installments Table */}
+      {/* Unified Installments Table */}
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-gray-100 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">Taksit Planı</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Ödemelerinizi vadesinde gerçekleştirip dekontunuzu danışmanınıza iletiniz.
-          </p>
+        <div className="border-b border-gray-100 px-6 py-4 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">
+              Tüm Program Ödemeleri & Taksitler
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Havale/EFT dekontunuzu yükleyebilir veya ofiste elden ödeme
+              bildirimi yapabilirsiniz.
+            </p>
+          </div>
+          {enrollments.length > 1 && (
+            <span className="rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-700">
+              {enrollments.length} Farklı Program Kaydı Birleştirildi
+            </span>
+          )}
         </div>
 
-        {student.payments.length === 0 ? (
+        {allPaymentsWithEnrollment.length === 0 ? (
           <div className="py-12 text-center text-xs text-gray-400">
             Kayıtlı ödeme planınız bulunmamaktadır.
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {student.payments.map((payment) => (
+            {allPaymentsWithEnrollment.map((payment) => (
               <div key={payment.id} className="p-6 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-sm font-bold text-gray-800">{payment.description}</h3>
-                    <p className="text-xs text-gray-500">
-                      Tutar: {formatCurrency(payment.totalAmount.toString(), payment.currency)}
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                        {payment.enrollmentLabel}
+                      </span>
+                      <h3 className="text-sm font-bold text-gray-800">
+                        {payment.description}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Toplam Plan Tutarı:{" "}
+                      <span className="font-semibold text-gray-800">
+                        {formatCurrency(
+                          payment.totalAmount.toString(),
+                          payment.currency,
+                        )}
+                      </span>
                     </p>
                   </div>
                   <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
@@ -116,12 +200,24 @@ export default async function StudentPaymentsPage() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/70 text-gray-500">
-                        <th className="py-2.5 px-4 text-left font-semibold">Taksit</th>
-                        <th className="py-2.5 px-4 text-left font-semibold">Tutar</th>
-                        <th className="py-2.5 px-4 text-left font-semibold">Vade Tarihi</th>
-                        <th className="py-2.5 px-4 text-left font-semibold">Durum</th>
-                        <th className="py-2.5 px-4 text-left font-semibold">Ödeme Tarihi</th>
-                        <th className="py-2.5 px-4 text-right font-semibold">Dekont / Ödeme Bildirimi</th>
+                        <th className="py-2.5 px-4 text-left font-semibold">
+                          Taksit
+                        </th>
+                        <th className="py-2.5 px-4 text-left font-semibold">
+                          Tutar
+                        </th>
+                        <th className="py-2.5 px-4 text-left font-semibold">
+                          Vade Tarihi
+                        </th>
+                        <th className="py-2.5 px-4 text-left font-semibold">
+                          Durum
+                        </th>
+                        <th className="py-2.5 px-4 text-left font-semibold">
+                          Ödeme Tarihi
+                        </th>
+                        <th className="py-2.5 px-4 text-right font-semibold">
+                          Dekont / Ödeme Bildirimi
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50 text-gray-700">
@@ -130,11 +226,18 @@ export default async function StudentPaymentsPage() {
 
                         return (
                           <tr key={inst.id} className="hover:bg-gray-50/50">
-                            <td className="py-3 px-4 font-semibold">{inst.sequence}. Taksit</td>
-                            <td className="py-3 px-4 font-bold text-gray-900">
-                              {formatCurrency(inst.amount.toString(), inst.currency)}
+                            <td className="py-3 px-4 font-semibold">
+                              {inst.sequence}. Taksit
                             </td>
-                            <td className="py-3 px-4">{formatDateShort(inst.dueDate)}</td>
+                            <td className="py-3 px-4 font-bold text-gray-900">
+                              {formatCurrency(
+                                inst.amount.toString(),
+                                inst.currency,
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {formatDateShort(inst.dueDate)}
+                            </td>
                             <td className="py-3 px-4">
                               {inst.isPaid ? (
                                 <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-semibold">
@@ -160,7 +263,7 @@ export default async function StudentPaymentsPage() {
                             <td className="py-3 px-4 text-right">
                               <div className="flex justify-end">
                                 <InstallmentProofButton
-                                  studentId={student.id}
+                                  studentId={payment.enrollmentId}
                                   installmentId={inst.id}
                                   sequence={inst.sequence}
                                   amount={inst.amount.toString()}
@@ -190,23 +293,37 @@ export default async function StudentPaymentsPage() {
           <h3 className="text-sm font-bold">Resmi Banka Hesap Bilgilerimiz</h3>
         </div>
         <p className="text-xs text-blue-800/80 mb-4 leading-relaxed">
-          Havale veya EFT açıklamasına mutlaka <strong>Ad Soyad ve Kayıt Numaranızı ({student.id.slice(0, 8).toUpperCase()})</strong> yazınız.
+          Havale veya EFT açıklamasına mutlaka{" "}
+          <strong>
+            Ad Soyad ({authUser.fullName}) ve Başvurduğunuz Programı
+          </strong>{" "}
+          yazınız.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div className="rounded-xl bg-white p-4 border border-blue-100 shadow-xs">
             <p className="font-semibold text-gray-500">USD Hesabı (Dolar)</p>
-            <p className="font-bold text-gray-900 mt-1">Garanti BBVA - Şişli Şubesi</p>
-            <p className="text-gray-600 mt-0.5">Alıcı: Advice Yurtdışı Eğitim Ltd. Şti.</p>
+            <p className="font-bold text-gray-900 mt-1">
+              Garanti BBVA - Şişli Şubesi
+            </p>
+            <p className="text-gray-600 mt-0.5">
+              Alıcı: Advice Yurtdışı Eğitim Ltd. Şti.
+            </p>
             <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 p-2 font-mono text-[11px] text-gray-800">
               <span>TR12 0006 2000 0001 2345 6789 01</span>
             </div>
           </div>
 
           <div className="rounded-xl bg-white p-4 border border-blue-100 shadow-xs">
-            <p className="font-semibold text-gray-500">TRY Hesabı (Türk Lirası)</p>
-            <p className="font-bold text-gray-900 mt-1">Garanti BBVA - Şişli Şubesi</p>
-            <p className="text-gray-600 mt-0.5">Alıcı: Advice Yurtdışı Eğitim Ltd. Şti.</p>
+            <p className="font-semibold text-gray-500">
+              TRY Hesabı (Türk Lirası)
+            </p>
+            <p className="font-bold text-gray-900 mt-1">
+              Garanti BBVA - Şişli Şubesi
+            </p>
+            <p className="text-gray-600 mt-0.5">
+              Alıcı: Advice Yurtdışı Eğitim Ltd. Şti.
+            </p>
             <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 p-2 font-mono text-[11px] text-gray-800">
               <span>TR98 0006 2000 0001 2345 6789 02</span>
             </div>

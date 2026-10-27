@@ -107,6 +107,18 @@ export async function registerUploadedDocument(
       });
     }
 
+    await tx.activityLog.create({
+      data: {
+        studentId: student.id,
+        actorId: user.id,
+        actorName: user.fullName,
+        actorRole: "STUDENT",
+        actionType: "DOCUMENT_UPLOADED",
+        title: `Öğrenci Belge Yükledi: ${type}`,
+        description: `Dosya: ${fileName} (Danışman onayı bekleniyor)`,
+      },
+    });
+
     return newDoc;
   });
 
@@ -189,6 +201,18 @@ export async function submitStudentInstallmentProof(params: {
         },
       });
     }
+
+    await tx.activityLog.create({
+      data: {
+        studentId: student.id,
+        actorId: user.id,
+        actorName: user.fullName,
+        actorRole: "STUDENT",
+        actionType: "PAYMENT_PROOF_UPLOADED",
+        title: `${installment.sequence}. Taksit İçin ${methodLabel} Gönderildi`,
+        description: `Tutar: ${Number(installment.amount)} ${installment.currency}${params.notes ? ` · Not: ${params.notes}` : ""}`,
+      },
+    });
   });
 
   revalidatePath("/odemelerim");

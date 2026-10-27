@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default async function StudentDetailPage({ params }: Props) {
-  const user = await requireStaff();
+  await requireStaff();
 
   const [student, staffList, availableWatJobs] = await Promise.all([
     prisma.student.findUnique({
@@ -37,7 +37,10 @@ export default async function StudentDetailPage({ params }: Props) {
           orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
         },
         watJobAssignments: {
-          include: { job: true },
+          include: {
+            job: true,
+            assignedBy: { select: { fullName: true } },
+          },
           orderBy: { createdAt: "desc" },
         },
         accountingEntries: {
@@ -66,6 +69,10 @@ export default async function StudentDetailPage({ params }: Props) {
             createdAt: "desc",
           },
         },
+        activityLogs: {
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        },
       },
     }),
     prisma.user.findMany({
@@ -90,9 +97,22 @@ export default async function StudentDetailPage({ params }: Props) {
     notFound();
   }
 
+  const siblingEnrollments = await prisma.student.findMany({
+    where: { userId: student.userId },
+    orderBy: [{ termYear: "desc" }, { createdAt: "desc" }],
+    select: {
+      id: true,
+      program: true,
+      termYear: true,
+      enrollmentLabel: true,
+      isActive: true,
+    },
+  });
+
   return (
     <StudentDetailView
       student={student}
+      siblingEnrollments={siblingEnrollments}
       staffList={staffList}
       availableWatJobs={availableWatJobs.map((j) => ({
         ...j,

@@ -44,18 +44,13 @@ export function PortalNavbar({ user, pendingApprovalsCount }: Props) {
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur shadow-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
-        <Link href="/anasayfa" className="flex items-center gap-3 py-3">
+        <Link href="/anasayfa" className="flex items-center py-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/advice-logo.svg"
             alt="Advice Yurtdışı Eğitim"
             className="h-10 w-auto object-contain"
           />
-          <div className="hidden sm:block border-l border-slate-200 pl-3">
-            <p className="text-xs font-semibold text-slate-700">
-              Hoş geldin, <span className="text-[#0f172a] font-bold">{user.fullName}</span>
-            </p>
-          </div>
         </Link>
 
         {/* Navigation links */}

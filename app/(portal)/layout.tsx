@@ -10,19 +10,13 @@ export default async function PortalLayout({
 }) {
   const user = await requireStudent();
 
-  // Find student ID to fetch pending count for notification badge
-  const student = await prisma.student.findUnique({
-    where: { userId: user.id },
-    select: {
-      id: true,
-      pendingApprovals: {
-        where: { status: "PENDING" },
-        select: { id: true },
-      },
+  // Count pending approvals across all enrollments of the student user
+  const pendingApprovalsCount = await prisma.pendingApproval.count({
+    where: {
+      student: { userId: user.id },
+      status: "PENDING",
     },
   });
-
-  const pendingApprovalsCount = student?.pendingApprovals?.length ?? 0;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">

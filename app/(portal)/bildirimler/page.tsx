@@ -8,14 +8,17 @@ export const dynamic = "force-dynamic";
 export default async function StudentNotificationsPage() {
   const authUser = await requireStudent();
 
-  const student = await prisma.student.findUnique({
+  const enrollments = await prisma.student.findMany({
     where: { userId: authUser.id },
+    orderBy: { createdAt: "desc" },
     include: {
       pendingApprovals: {
         orderBy: { createdAt: "desc" },
       },
     },
   });
+
+  const student = enrollments[0];
 
   if (!student) {
     return (
@@ -24,6 +27,8 @@ export default async function StudentNotificationsPage() {
       </div>
     );
   }
+
+  const allPendingApprovals = enrollments.flatMap((e) => e.pendingApprovals);
 
   return (
     <div className="space-y-6">
@@ -34,7 +39,7 @@ export default async function StudentNotificationsPage() {
         </p>
       </div>
 
-      <ApprovalDiffViewer approvals={student.pendingApprovals} />
+      <ApprovalDiffViewer approvals={allPendingApprovals} />
     </div>
   );
 }

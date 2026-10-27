@@ -208,6 +208,15 @@ export async function toggleInstallmentPaid(
           description: `${inst.payment.description} - ${inst.sequence}. Taksit Tahsilatı`,
         },
       });
+
+      await tx.activityLog.create({
+        data: {
+          studentId: inst.payment.studentId,
+          actionType: "INSTALLMENT_PAID",
+          title: `${inst.sequence}. Taksit Ödemesi Onaylandı (${Number(inst.amount)} ${inst.currency})`,
+          description: `${inst.payment.description} · Ödeme Yöntemi: ${inst.paymentMethod || "BANK_TRANSFER"}`,
+        },
+      });
     }
 
     return inst;
@@ -500,6 +509,24 @@ export async function reviewStudentDocument(
         reviewedAt: new Date(),
       },
     });
+
+    await tx.activityLog.create({
+      data: {
+        studentId: doc.studentId,
+        actorId: advisor.id,
+        actorName: advisor.fullName,
+        actorRole: advisor.role,
+        actionType: decision === "APPROVED" ? "DOCUMENT_APPROVED" : "DOCUMENT_REVISION",
+        title:
+          decision === "APPROVED"
+            ? `Belge Onaylandı: ${doc.type}`
+            : `Belge İçin Revize İstendi: ${doc.type}`,
+        description:
+          decision === "REVISION_REQUESTED"
+            ? `Sebep: ${rejectionReason || "Belge uygun değil"} (${doc.fileName})`
+            : `Dosya: ${doc.fileName}`,
+      },
+    });
   });
 
   revalidatePath(`/students/${doc.studentId}`);
@@ -519,7 +546,7 @@ export async function uploadDocumentByAdvisor(params: {
   fileUrl: string;
   notes?: string;
 }): Promise<StudentActionState> {
-  await requireStaff();
+  const advisor = await requireStaff();
 
   const existing = await prisma.document.findFirst({
     where: { studentId: params.studentId, type: params.type },
@@ -551,6 +578,18 @@ export async function uploadDocumentByAdvisor(params: {
     });
   }
 
+  await prisma.activityLog.create({
+    data: {
+      studentId: params.studentId,
+      actorId: advisor.id,
+      actorName: advisor.fullName,
+      actorRole: advisor.role,
+      actionType: "DOCUMENT_UPLOADED",
+      title: `Danışman Belge Yükledi: ${params.type}`,
+      description: `${params.fileName}${params.notes ? ` · Not: ${params.notes}` : ""}`,
+    },
+  });
+
   revalidatePath(`/students/${params.studentId}`);
   revalidatePath("/anasayfa");
   revalidatePath("/programim");
@@ -568,7 +607,7 @@ export async function createStudentPaymentPlan(params: {
   installmentCount: number;
   firstDueDate: string;
 }): Promise<StudentActionState> {
-  await requireStaff();
+  const advisor = await requireStaff();
 
   const count = Math.max(1, Math.min(12, Number(params.installmentCount) || 1));
   const total = Number(params.totalAmount) || 0;
@@ -611,8 +650,139 @@ export async function createStudentPaymentPlan(params: {
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      studentId: params.studentId,
+      actorId: advisor.id,
+      actorName: advisor.fullName,
+      actorRole: advisor.role,
+      actionType: "PAYMENT_PLAN_CREATED",
+      title: `Yeni Ödeme Planı Oluşturuldu: ${total} ${params.currency} (${count} Taksit)`,
+      description: params.description || "Program Danışmanlık & Kayıt Bedeli",
+    },
+  });
+
   revalidatePath(`/students/${params.studentId}`);
   revalidatePath("/odemelerim");
   revalidatePath("/accounting");
   return { success: true };
+}
+
+// ── enrollExistingStudentInNewProgram (Multi-program / Multi-year enrollment) ─
+
+export async function enrollExistingStudentInNewProgram(params: {
+  sourceStudentId: string;
+  program: "WORK_AND_TRAVEL" | "ACADEMY" | "LANGUAGE_SCHOOL" | "SUMMER_CAMP" | "VISA_CONSULTING";
+  termYear: number;
+  enrollmentLabel?: string;
+}): Promise<StudentActionState & { newStudentId?: string }> {
+  const advisor = await requireStaff();
+
+  const sourceStudent = await prisma.student.findUnique({
+    where: { id: params.sourceStudentId },
+    include: { user: true, profile: true },
+  });
+
+  if (!sourceStudent) {
+    return { success: false, error: "Öğrenci bulunamadı." };
+  }
+
+  const programNameMap: Record<string, string> = {
+    WORK_AND_TRAVEL: "Work & Travel",
+    ACADEMY: "Akademik Program",
+    LANGUAGE_SCHOOL: "Dil Okulu",
+    SUMMER_CAMP: "Yaz Kampı",
+    VISA_CONSULTING: "Vize Danışmanlığı",
+  };
+
+  const label =
+    params.enrollmentLabel?.trim() ||
+    `${programNameMap[params.program] || params.program} ${params.termYear}`;
+
+  const newEnrollment = await prisma.$transaction(async (tx) => {
+    const created = await tx.student.create({
+      data: {
+        userId: sourceStudent.userId,
+        advisorId: advisor.id,
+        program: params.program,
+        termYear: Number(params.termYear) || new Date().getFullYear(),
+        enrollmentLabel: label,
+        isActive: true,
+      },
+    });
+
+    const p = sourceStudent.profile;
+    await tx.studentProfile.create({
+      data: {
+        studentId: created.id,
+        nationalId: p?.nationalId || "",
+        dateOfBirth: p?.dateOfBirth || new Date("2002-01-01"),
+        placeOfBirth: p?.placeOfBirth || "",
+        nationality: p?.nationality || "TR",
+        gender: p?.gender || null,
+        city: p?.city || null,
+        addressLine1: p?.addressLine1 || null,
+        emergencyContactName: p?.emergencyContactName || null,
+        emergencyContactRelationship: p?.emergencyContactRelationship || null,
+        emergencyContactPhone: p?.emergencyContactPhone || null,
+        passportNumber: p?.passportNumber || null,
+        passportIssueDate: p?.passportIssueDate || null,
+        passportExpiry: p?.passportExpiry || null,
+        universityName: p?.universityName || null,
+        universityGpa: p?.universityGpa || null,
+        fieldOfStudy: p?.fieldOfStudy || null,
+      },
+    });
+
+    if (params.program === "WORK_AND_TRAVEL") {
+      await tx.watDetail.create({
+        data: {
+          studentId: created.id,
+          currentStage: "PRE_REGISTRATION",
+          ds160Status: "NOT_STARTED",
+        },
+      });
+    } else if (params.program === "LANGUAGE_SCHOOL") {
+      await tx.languageDetail.create({
+        data: { studentId: created.id },
+      });
+    } else if (params.program === "ACADEMY") {
+      await tx.academyDetail.create({
+        data: { studentId: created.id },
+      });
+    } else if (params.program === "SUMMER_CAMP") {
+      await tx.summerCampDetail.create({
+        data: { studentId: created.id },
+      });
+    } else if (params.program === "VISA_CONSULTING") {
+      await tx.visaDetail.create({
+        data: {
+          studentId: created.id,
+          visaType: "STUDENT",
+          destinationCountry: "ABD",
+        },
+      });
+    }
+
+    await tx.activityLog.create({
+      data: {
+        studentId: created.id,
+        actorId: advisor.id,
+        actorName: advisor.fullName,
+        actorRole: advisor.role,
+        actionType: "PROGRAM_ENROLLED",
+        title: `Yeni Program Kaydı Açıldı: ${label}`,
+        description: `${sourceStudent.user.fullName} (${sourceStudent.user.email}) için ek program/dönem dosyası oluşturuldu.`,
+      },
+    });
+
+    return created;
+  });
+
+  revalidatePath("/students");
+  revalidatePath(`/students/${params.sourceStudentId}`);
+  revalidatePath(`/students/${newEnrollment.id}`);
+  revalidatePath("/anasayfa");
+  revalidatePath("/programim");
+  return { success: true, newStudentId: newEnrollment.id };
 }

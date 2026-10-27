@@ -151,7 +151,7 @@ model User {
   // Relations
   customRole        CustomRole?        @relation(fields: [customRoleId], references: [id])
   advisorProfile    AdvisorProfile?
-  studentProfile    Student?
+  studentProfiles   Student[]
   leadsAsAdvisor    Lead[]             @relation("AdvisorLeads")
   leadCallLogs      LeadCallLog[]      @relation("CallLogAdvisor")
   studentsAsAdvisor Student[]          @relation("AdvisorStudents")
@@ -160,6 +160,7 @@ model User {
   jobAssignments    WatJobAssignment[] @relation("JobAssignedBy")
   accountingEntries AccountingEntry[]  @relation("AccountingAdvisor")
   notifications     Notification[]     @relation("UserNotifications")
+  activityLogs      ActivityLog[]      @relation("ActivityActor")
 
   @@map("users")
 }
@@ -264,10 +265,12 @@ model LeadCallLog {
 
 model Student {
   id              String   @id @default(uuid()) @db.Uuid
-  userId          String   @unique @db.Uuid
+  userId          String   @db.Uuid
   leadId          String?  @unique @db.Uuid
   advisorId       String?  @db.Uuid
   program         Program
+  termYear        Int      @default(2026)
+  enrollmentLabel String?
   groupName       String?
   summerBookingId String?  @db.Uuid
   isActive        Boolean  @default(true)
@@ -292,9 +295,12 @@ model Student {
   watJobAssignments    WatJobAssignment[]
   academicApplications AcademicApplication[]
   accountingEntries    AccountingEntry[]
+  activityLogs         ActivityLog[]
 
+  @@index([userId])
   @@index([advisorId])
   @@index([program])
+  @@index([termYear])
   @@index([groupName])
   @@index([summerBookingId])
   @@index([isActive])
@@ -883,4 +889,25 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  studentId   String?  @db.Uuid
+  actorId     String?  @db.Uuid
+  actorName   String?
+  actorRole   String?
+  actionType  String
+  title       String
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  actor   User?    @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, createdAt])
+  @@index([actionType])
+  @@index([createdAt])
+  @@map("activity_logs")
 }

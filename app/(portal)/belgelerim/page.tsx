@@ -10,14 +10,17 @@ export const dynamic = "force-dynamic";
 export default async function StudentDocumentsPage() {
   const authUser = await requireStudent();
 
-  const student = await prisma.student.findUnique({
+  const enrollments = await prisma.student.findMany({
     where: { userId: authUser.id },
+    orderBy: { createdAt: "desc" },
     include: {
       documents: {
         orderBy: { createdAt: "desc" },
       },
     },
   });
+
+  const student = enrollments[0];
 
   if (!student) {
     return (
@@ -27,7 +30,8 @@ export default async function StudentDocumentsPage() {
     );
   }
 
-  const documents: CRMDocument[] = student.documents.map((d) => ({
+  const allDocs = enrollments.flatMap((e) => e.documents);
+  const documents: CRMDocument[] = allDocs.map((d) => ({
     id: d.id,
     studentId: d.studentId,
     type: d.type,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -44,6 +45,7 @@ import {
   reviewStudentDocument,
   uploadDocumentByAdvisor,
   createStudentPaymentPlan,
+  enrollExistingStudentInNewProgram,
 } from "@/actions/crm/students";
 import { createStudentJobLink } from "@/actions/crm/jobs";
 import { createAdvisorNote } from "@/actions/crm/notes";
@@ -72,6 +74,13 @@ function NoteSubmitButton() {
 
 interface Props {
   student: any;
+  siblingEnrollments?: {
+    id: string;
+    program: Program;
+    termYear: number;
+    enrollmentLabel: string | null;
+    isActive: boolean;
+  }[];
   staffList?: { id: string; fullName: string }[];
   availableWatJobs?: {
     id: string;
@@ -84,15 +93,29 @@ interface Props {
 
 export function StudentDetailView({
   student,
+  siblingEnrollments = [],
   staffList = [],
   availableWatJobs = [],
 }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    "personal" | "program" | "applications" | "payments" | "documents" | "notes"
+    | "personal"
+    | "program"
+    | "applications"
+    | "payments"
+    | "documents"
+    | "notes"
+    | "logs"
   >("program");
   const [isPending, startTransition] = useTransition();
   const [noteText, setNoteText] = useState("");
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showNewProgramModal, setShowNewProgramModal] = useState(false);
+  const [newProgramForm, setNewProgramForm] = useState({
+    program: "LANGUAGE_SCHOOL" as Program,
+    termYear: 2026,
+    enrollmentLabel: "",
+  });
 
   // Editable WAT Placement & Visa State
   const [watForm, setWatForm] = useState({
@@ -316,6 +339,15 @@ export function StudentDetailView({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            onClick={() => setShowNewProgramModal((v) => !v)}
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-800 shadow-sm hover:bg-indigo-100"
+          >
+            <Plus className="h-4 w-4 text-indigo-600" />
+            Yeni Program / Dönem Ekle
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowEmailModal(true)}
             className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-800"
           >
@@ -348,6 +380,148 @@ export function StudentDetailView({
           </button>
         </div>
       </div>
+
+      {/* ── Multi-Program / Multi-Year Switcher & New Program Enrollment Modal ── */}
+      {siblingEnrollments.length > 1 && (
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-indigo-950">
+            <span>Bu Öğrencinin Kayıtlı Olduğu Tüm Program &amp; Dönem Dosyaları:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {siblingEnrollments.map((sib) => {
+              const isCurrent = sib.id === student.id;
+              return (
+                <Link
+                  key={sib.id}
+                  href={`/students/${sib.id}`}
+                  className={cn(
+                    "rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all",
+                    isCurrent
+                      ? "bg-[#0f172a] text-white shadow-xs"
+                      : "border border-indigo-200 bg-white text-indigo-900 hover:bg-indigo-100",
+                  )}
+                >
+                  {sib.enrollmentLabel ||
+                    `${PROGRAM_LABELS[sib.program]} (${sib.termYear})`}
+                  {isCurrent && " (Aktif Dosya)"}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {showNewProgramModal && (
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-indigo-950">
+                {student.user.fullName} ({student.user.email}) İçin Yeni Program / Dönem Kaydı Aç
+              </h3>
+              <p className="text-xs text-indigo-800/80 mt-0.5">
+                Öğrencinin kimlik, pasaport ve iletişim bilgileri otomatik kopyalanır; öğrenci kendi portalında &ldquo;Programım&rdquo; sekmesinde her iki programı da ayrı ayrı görebilir ve ödemelerini tek ekrandan takip edebilir.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">
+                Yeni Program Türü
+              </label>
+              <select
+                value={newProgramForm.program}
+                onChange={(e) =>
+                  setNewProgramForm({
+                    ...newProgramForm,
+                    program: e.target.value as Program,
+                  })
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-semibold"
+              >
+                <option value="LANGUAGE_SCHOOL">Dil Okulu (Language School)</option>
+                <option value="WORK_AND_TRAVEL">Work and Travel</option>
+                <option value="ACADEMY">Akademik Program (Üniversite/Master)</option>
+                <option value="SUMMER_CAMP">Yaz Kampı (Summer School)</option>
+                <option value="VISA_CONSULTING">Vize Danışmanlığı</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">
+                Başvuru / Dönem Yılı
+              </label>
+              <select
+                value={newProgramForm.termYear}
+                onChange={(e) =>
+                  setNewProgramForm({
+                    ...newProgramForm,
+                    termYear: Number(e.target.value),
+                  })
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-semibold"
+              >
+                {[2025, 2026, 2027, 2028].map((yr) => (
+                  <option key={yr} value={yr}>
+                    {yr} Dönemi
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-1 block font-semibold text-slate-700">
+                Dosya Başlığı (Opsiyonel)
+              </label>
+              <input
+                type="text"
+                value={newProgramForm.enrollmentLabel}
+                onChange={(e) =>
+                  setNewProgramForm({
+                    ...newProgramForm,
+                    enrollmentLabel: e.target.value,
+                  })
+                }
+                placeholder="Örn: Dil Okulu 2026 - Londra Kaplan veya Work & Travel 2027"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowNewProgramModal(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600"
+            >
+              İptal
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  const res = await enrollExistingStudentInNewProgram({
+                    sourceStudentId: student.id,
+                    program: newProgramForm.program as any,
+                    termYear: newProgramForm.termYear,
+                    enrollmentLabel: newProgramForm.enrollmentLabel,
+                  });
+                  if (res.success && res.newStudentId) {
+                    setShowNewProgramModal(false);
+                    router.push(`/students/${res.newStudentId}`);
+                  } else if (!res.success) {
+                    alert(res.error);
+                  }
+                });
+              }}
+              className="rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a]"
+            >
+              Yeni Program Kaydını Oluştur &amp; Dosyaya Git →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Summary Hero Card ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -504,6 +678,19 @@ export function StudentDetailView({
         >
           <MessageSquare className="h-4 w-4" />
           Takım İçi Conversation (@mention) ({notes?.length || 0})
+        </button>
+
+        <button
+          onClick={() => setActiveTab("logs")}
+          className={cn(
+            "flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors",
+            activeTab === "logs"
+              ? "border-[#0f172a] text-[#0f172a]"
+              : "border-transparent text-slate-500 hover:text-slate-900",
+          )}
+        >
+          <Clock className="h-4 w-4" />
+          İşlem Geçmişi &amp; Loglar ({student.activityLogs?.length || 0})
         </button>
       </div>
 
@@ -875,58 +1062,91 @@ export function StudentDetailView({
                 </div>
               </div>
 
-              {/* Assigned Student Job Links */}
-              {jobAssignments.length > 0 && (
-                <div className="rounded-xl border border-slate-200 p-4 space-y-2.5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              {/* Assigned Student Job Links & Full History */}
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                     <Link2 className="h-4 w-4 text-[#1e3a8a]" />
-                    Öğrenciye Gönderilen Özel İş Teklifi Linkleri
+                    Öğrenci İş Teklifi Geçmişi (Job Offer History — {jobAssignments.length} Kayıt)
                   </h4>
-                  <div className="space-y-2">
+                  <span className="text-[11px] text-slate-500">
+                    Reddedilen, onaylanan ve bekleyen tüm teklif kayıtları
+                  </span>
+                </div>
+
+                {jobAssignments.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-3">
+                    Bu öğrenciye henüz iş teklifi atanmamış. Yukarıdaki havuzdan iş seçip gönderebilirsiniz.
+                  </p>
+                ) : (
+                  <div className="space-y-2.5">
                     {jobAssignments.map((asg: any) => (
                       <div
                         key={asg.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 text-xs border border-slate-200"
+                        className={cn(
+                          "flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl p-3.5 text-xs border",
+                          asg.status === "ACCEPTED"
+                            ? "bg-emerald-50/40 border-emerald-200"
+                            : asg.status === "DECLINED"
+                              ? "bg-rose-50/30 border-rose-200"
+                              : "bg-slate-50 border-slate-200",
+                        )}
                       >
-                        <div>
-                          <span className="font-bold text-slate-900">
-                            {asg.job?.jobTitle} ({asg.job?.location})
-                          </span>
-                          <span className="ml-2 text-slate-500">
-                            ${String(asg.job?.hourlyWage)}/saat
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={cn(
-                              "rounded-full px-2.5 py-0.5 text-[10px] font-bold",
-                              asg.status === "ACCEPTED"
-                                ? "bg-emerald-100 text-emerald-800"
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={cn(
+                                "rounded-full px-2.5 py-0.5 text-[10px] font-bold",
+                                asg.status === "ACCEPTED"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : asg.status === "DECLINED"
+                                    ? "bg-rose-100 text-rose-800"
+                                    : "bg-amber-100 text-amber-800",
+                              )}
+                            >
+                              {asg.status === "ACCEPTED"
+                                ? "✓ ÖĞRENCİ ONAYLADI"
                                 : asg.status === "DECLINED"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-amber-100 text-amber-800",
+                                  ? "✕ ÖĞRENCİ REDDETTİ"
+                                  : "⏳ YANIT BEKLENİYOR"}
+                            </span>
+                            <span className="font-bold text-slate-900">
+                              [{asg.job?.sponsor}] {asg.job?.jobTitle} ({asg.job?.location})
+                            </span>
+                            <span className="font-semibold text-emerald-700">
+                              ${String(asg.job?.hourlyWage)}/saat
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500">
+                            Atama Tarihi: {formatDateTime(asg.createdAt)}
+                            {asg.assignedBy?.fullName && (
+                              <> · Atayan: <strong>{asg.assignedBy.fullName}</strong></>
                             )}
-                          >
-                            {asg.status === "ACCEPTED"
-                              ? "✓ ÖĞRENCİ ONAYLADI"
-                              : asg.status === "DECLINED"
-                              ? "✕ ÖĞRENCİ REDDETTİ"
-                              : "YANIT BEKLENİYOR"}
-                          </span>
+                            {asg.respondedAt && (
+                              <> · Yanıt Tarihi: <strong>{formatDateTime(asg.respondedAt)}</strong></>
+                            )}
+                          </p>
+                          {asg.studentNote && (
+                            <p className="text-xs font-semibold text-rose-900 bg-white/80 border border-rose-200/70 rounded-lg px-2.5 py-1.5 mt-1">
+                              Öğrenci Yanıt Notu: &ldquo;{asg.studentNote}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
                           <a
                             href={`/job-offer/${asg.shareToken}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="font-bold text-[#1e3a8a] hover:underline"
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-bold text-[#1e3a8a] hover:bg-blue-50"
                           >
-                            /job-offer/{asg.shareToken} →
+                            Teklif Sayfasını Aç →
                           </a>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
@@ -2048,6 +2268,58 @@ export function StudentDetailView({
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── 7. ACTIVITY LOGS (SİSTEM KAYITLARI) TAB ──────────────────────── */}
+      {activeTab === "logs" && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+          <div>
+            <h3 className="text-base font-bold text-[#0f172a] flex items-center gap-2">
+              <Clock className="h-4 w-4 text-blue-600" />
+              Öğrenci Dosyası İşlem Geçmişi &amp; Sistem Logları
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              İş teklifi atamaları, kabul/ret yanıtları, belge yükleme ve onayları, dekont bildirimleri ve taksit tahsilatlarının kronolojik veritabanı kayıtları.
+            </p>
+          </div>
+
+          {!student.activityLogs || student.activityLogs.length === 0 ? (
+            <div className="py-10 text-center text-xs text-slate-400">
+              Henüz bu dosyada kayıtlı sistem logu bulunmamaktadır.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 text-xs">
+              {student.activityLogs.map((log: any) => (
+                <div
+                  key={log.id}
+                  className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-600">
+                        {log.actionType}
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {log.title}
+                      </span>
+                    </div>
+                    {log.description && (
+                      <p className="text-slate-600">{log.description}</p>
+                    )}
+                  </div>
+                  <div className="text-left sm:text-right text-[11px] text-slate-400 shrink-0">
+                    {log.actorName && (
+                      <p className="font-semibold text-slate-600">
+                        {log.actorName} ({log.actorRole || "Sistem"})
+                      </p>
+                    )}
+                    <p>{formatDateTime(log.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

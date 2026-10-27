@@ -298,44 +298,72 @@ export async function convertLeadToStudent(
     return { success: false, error: "Bu lead zaten kayıtlı öğrenciye dönüştürülmüş." };
   }
 
-  let authUserId: string | null = null;
-  const isMockSupabase =
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL.includes("example.supabase.co");
+  const normalizedEmail = lead.email.trim().toLowerCase();
+  const existingUser = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
 
-  if (!isMockSupabase) {
-    try {
-      const supabaseAdmin = createSupabaseAdminClient();
-      const { data: authData } =
-        await supabaseAdmin.auth.admin.inviteUserByEmail(lead.email, {
-          data: { full_name: lead.fullName },
-        });
-      if (authData?.user?.id) {
-        authUserId = authData.user.id;
+  let authUserId: string = existingUser?.id || "";
+
+  if (!existingUser) {
+    const isMockSupabase =
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL.includes("example.supabase.co");
+
+    if (!isMockSupabase) {
+      try {
+        const supabaseAdmin = createSupabaseAdminClient();
+        const { data: authData } =
+          await supabaseAdmin.auth.admin.inviteUserByEmail(normalizedEmail, {
+            data: { full_name: lead.fullName },
+          });
+        if (authData?.user?.id) {
+          authUserId = authData.user.id;
+        }
+      } catch {
+        authUserId = "";
       }
-    } catch {
-      authUserId = null;
+    }
+
+    if (!authUserId) {
+      authUserId = crypto.randomUUID();
     }
   }
 
-  if (!authUserId) {
-    authUserId = crypto.randomUUID();
-  }
-
   const defaultPasswordHash = await bcrypt.hash("Password123!", 10);
+  const currentYear = new Date().getFullYear();
+
+  const programNameMap: Record<Program, string> = {
+    WORK_AND_TRAVEL: "Work & Travel",
+    ACADEMY: "Akademik Program",
+    LANGUAGE_SCHOOL: "Dil Okulu",
+    SUMMER_CAMP: "Yaz Kampı",
+    VISA_CONSULTING: "Vize Danışmanlığı",
+  };
 
   await prisma.$transaction(async (tx) => {
-    await tx.user.create({
-      data: {
-        id: authUserId!,
-        email: lead.email,
-        fullName: lead.fullName,
-        phone: lead.phone,
-        role: "STUDENT",
-        passwordHash: defaultPasswordHash,
-        isActive: true,
-      },
-    });
+    if (!existingUser) {
+      await tx.user.create({
+        data: {
+          id: authUserId,
+          email: normalizedEmail,
+          fullName: lead.fullName,
+          phone: lead.phone,
+          role: "STUDENT",
+          passwordHash: defaultPasswordHash,
+          isActive: true,
+        },
+      });
+    }
+
+    // Check if student had a previous profile we can clone personal info from
+    const previousEnrollment = existingUser
+      ? await tx.student.findFirst({
+          where: { userId: authUserId },
+          include: { profile: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : null;
 
     const student = await tx.student.create({
       data: {
@@ -343,17 +371,26 @@ export async function convertLeadToStudent(
         leadId: lead.id,
         advisorId: lead.advisorId || advisor.id,
         program: lead.program,
+        termYear: currentYear,
+        enrollmentLabel: `${programNameMap[lead.program]} ${currentYear}`,
         isActive: true,
       },
     });
 
+    const prevProf = previousEnrollment?.profile;
     await tx.studentProfile.create({
       data: {
         studentId: student.id,
-        nationalId: "",
-        dateOfBirth: new Date("2002-01-01"),
-        placeOfBirth: lead.city || "",
-        city: lead.city || null,
+        nationalId: prevProf?.nationalId || "",
+        dateOfBirth: prevProf?.dateOfBirth || new Date("2002-01-01"),
+        placeOfBirth: prevProf?.placeOfBirth || lead.city || "",
+        city: prevProf?.city || lead.city || null,
+        passportNumber: prevProf?.passportNumber || null,
+        passportExpiry: prevProf?.passportExpiry || null,
+        universityName: prevProf?.universityName || null,
+        fieldOfStudy: prevProf?.fieldOfStudy || null,
+        emergencyContactName: prevProf?.emergencyContactName || null,
+        emergencyContactPhone: prevProf?.emergencyContactPhone || null,
       },
     });
 
@@ -364,6 +401,32 @@ export async function convertLeadToStudent(
           sponsorName: lead.sponsor || null,
           currentStage: "PRE_REGISTRATION",
           ds160Status: "NOT_STARTED",
+        },
+      });
+    } else if (lead.program === "LANGUAGE_SCHOOL") {
+      await tx.languageDetail.create({
+        data: {
+          studentId: student.id,
+        },
+      });
+    } else if (lead.program === "ACADEMY") {
+      await tx.academyDetail.create({
+        data: {
+          studentId: student.id,
+        },
+      });
+    } else if (lead.program === "SUMMER_CAMP") {
+      await tx.summerCampDetail.create({
+        data: {
+          studentId: student.id,
+        },
+      });
+    } else if (lead.program === "VISA_CONSULTING") {
+      await tx.visaDetail.create({
+        data: {
+          studentId: student.id,
+          visaType: "STUDENT",
+          destinationCountry: "ABD",
         },
       });
     }
@@ -381,13 +444,31 @@ export async function convertLeadToStudent(
       data: {
         studentId: student.id,
         authorId: advisor.id,
-        note: `Lead kaydından öğrenciye dönüştürüldü. Öğrenci portalı giriş bilgileri oluşturuldu (${lead.email}).`,
+        note: existingUser
+          ? `Mevcut öğrenci hesabına (${normalizedEmail}) yeni ${programNameMap[lead.program]} (${currentYear}) program kaydı eklendi.`
+          : `Lead kaydından öğrenciye dönüştürüldü. Öğrenci portalı giriş bilgileri oluşturuldu (${normalizedEmail}).`,
+      },
+    });
+
+    await tx.activityLog.create({
+      data: {
+        studentId: student.id,
+        actorId: advisor.id,
+        actorName: advisor.fullName,
+        actorRole: advisor.role,
+        actionType: "LEAD_CONVERTED",
+        title: `${programNameMap[lead.program]} (${currentYear}) Kaydı Açıldı`,
+        description: existingUser
+          ? `Mevcut öğrenci hesabına ek program/dönem kaydı olarak bağlandı.`
+          : `Aday havuzundan kesin kayda dönüştürüldü.`,
       },
     });
   });
 
   revalidatePath("/leads");
   revalidatePath("/students");
+  revalidatePath("/anasayfa");
+  revalidatePath("/programim");
   return { success: true };
 }
 

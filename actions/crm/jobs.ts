@@ -196,10 +196,24 @@ export async function createStudentJobLink(
         linkUrl: `/job-offer/${shareToken}`,
       },
     }),
+    prisma.activityLog.create({
+      data: {
+        studentId,
+        actorId: advisor.id,
+        actorName: advisor.fullName,
+        actorRole: advisor.role,
+        actionType: "JOB_OFFER_SENT",
+        title: `İş Teklifi Atandı: ${job.jobTitle} (${job.location})`,
+        description: `Sponsor: ${job.sponsor} · Saatlik Ücret: $${Number(job.hourlyWage)}/saat · Pozisyon: ${job.position || job.jobCategory}`,
+        metadata: { jobId: job.id, shareToken },
+      },
+    }),
   ]);
 
   revalidatePath("/wat/catalog");
   revalidatePath(`/students/${studentId}`);
+  revalidatePath("/anasayfa");
+  revalidatePath("/programim");
   return {
     success: true,
     shareToken,
@@ -264,7 +278,45 @@ export async function respondToJobOffer(
           currentStage: "JOB_PLACEMENT",
         },
       });
+    } else if (decision === "DECLINED") {
+      // Check if student has any other ACCEPTED job assignment
+      const otherAccepted = await tx.watJobAssignment.findFirst({
+        where: {
+          studentId: assignment.studentId,
+          id: { not: assignment.id },
+          status: "ACCEPTED",
+        },
+      });
+      if (!otherAccepted) {
+        await tx.watDetail.updateMany({
+          where: { studentId: assignment.studentId },
+          data: {
+            employerName: null,
+            jobTitle: null,
+            employerState: null,
+            currentStage: "JOB_SELECTION",
+          },
+        });
+      }
     }
+
+    await tx.activityLog.create({
+      data: {
+        studentId: assignment.studentId,
+        actorId: assignment.student.userId,
+        actorName: assignment.student.user.fullName,
+        actorRole: "STUDENT",
+        actionType: decision === "ACCEPTED" ? "JOB_OFFER_ACCEPTED" : "JOB_OFFER_DECLINED",
+        title:
+          decision === "ACCEPTED"
+            ? `İş Teklifi Kabul Edildi: ${assignment.job.jobTitle}`
+            : `İş Teklifi Reddedildi: ${assignment.job.jobTitle}`,
+        description: studentNote
+          ? `Öğrenci Notu: "${studentNote}" (${assignment.job.location} · $${Number(assignment.job.hourlyWage)}/saat)`
+          : `${assignment.job.sponsor} · ${assignment.job.location} ($${Number(assignment.job.hourlyWage)}/saat)`,
+        metadata: { jobId: assignment.jobId, assignmentId: assignment.id, decision, studentNote },
+      },
+    });
 
     await tx.notification.create({
       data: {
@@ -275,8 +327,8 @@ export async function respondToJobOffer(
             ? `✅ ${assignment.student.user.fullName} İş Teklifini Onayladı!`
             : `❌ ${assignment.student.user.fullName} İş Teklifini Reddetti`,
         message: `${assignment.job.jobTitle} (${assignment.job.location}) teklifi öğrenci tarafından ${
-          decision === "ACCEPTED" ? "kabul edildi" : "reddedildi"
-        }.`,
+          decision === "ACCEPTED" ? "kabul edildi" : `reddedildi${studentNote ? ` (Not: ${studentNote})` : ""}`
+        }. Yeni iş teklifi atamak için öğrenci profiline gidin.`,
         linkUrl: `/students/${assignment.studentId}`,
       },
     });
@@ -285,5 +337,7 @@ export async function respondToJobOffer(
   revalidatePath(`/job-offer/${shareToken}`);
   revalidatePath("/wat/catalog");
   revalidatePath(`/students/${assignment.studentId}`);
+  revalidatePath("/anasayfa");
+  revalidatePath("/programim");
   return { success: true };
 }

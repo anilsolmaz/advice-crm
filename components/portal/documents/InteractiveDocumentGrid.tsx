@@ -28,6 +28,7 @@ export interface ExistingDocItem {
 
 interface InteractiveDocumentGridProps {
   studentId: string;
+  programLabel?: string;
   requiredDocs: RequiredDocConfig[];
   uploadedDocs: ExistingDocItem[];
 }
