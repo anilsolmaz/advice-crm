@@ -22,12 +22,7 @@ export function ProgramStepperWizard({ program, steps }: Props) {
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-4 border-b border-gray-100 gap-2">
-        <div>
-          <h2 className="text-lg font-bold text-gray-900">Program İlerleme Durumu</h2>
-          <p className="text-xs text-gray-500">
-            Aşama durumunuz danışmanınız tarafından güncellenmektedir.
-          </p>
-        </div>
+        <h2 className="text-lg font-bold text-gray-900">Program İlerleme Durumu</h2>
         <span className="inline-flex items-center self-start sm:self-auto rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
           {program === "WORK_AND_TRAVEL"
             ? "Work & Travel 2026"

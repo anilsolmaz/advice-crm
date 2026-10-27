@@ -724,14 +724,9 @@ export function StudentDetailView({
           {/* SOL KOLON (7/12 — Yarıdan Geniş): SADECE Yukarıdan Aşağıya Not Kartları */}
           <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col">
             <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[#0f172a]">
-                  Görüşme Detayı &amp; Danışman Notları
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Son eklenen notlar en üstte yer alır · Dikey kaydırılabilir
-                </p>
-              </div>
+              <h3 className="text-sm font-bold text-[#0f172a]">
+                Görüşme Detayı &amp; Danışman Notları
+              </h3>
               <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600">
                 {notes?.length || 0} Kayıt
               </span>
@@ -832,9 +827,6 @@ export function StudentDetailView({
                   <FileText className="h-6 w-6 mb-1.5 text-slate-300" />
                   <p className="text-xs font-medium">
                     Henüz kayıtlı görüşme veya danışman notu bulunmuyor.
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Sağ taraftaki panelden yeni not ekleyebilirsiniz.
                   </p>
                 </div>
               )}

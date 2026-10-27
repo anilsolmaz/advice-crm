@@ -180,9 +180,6 @@ export default async function StudentDashboardPage() {
               {missingDocCount} Eksik
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1.5">
-            Aşağıdaki listeden eksik evraklara tıklayıp yükleyebilirsiniz.
-          </p>
         </div>
 
         {/* Card 3: Next Installment / Payment Summary */}

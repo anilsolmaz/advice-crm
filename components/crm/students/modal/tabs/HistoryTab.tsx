@@ -89,14 +89,9 @@ export function HistoryTab({ notes, studentId, student }: Props) {
       {/* SOL KOLON (7/12 — Yarıdan Geniş): SADECE Yukarıdan Aşağıya Not Kartları */}
       <div className="lg:col-span-7 flex flex-col space-y-3">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-[#0f172a]">
-              Görüşme Detayı &amp; Notlar
-            </h3>
-            <p className="text-[11px] text-slate-500">
-              Son eklenen notlar en üstte yer alır · Dikey kaydırılabilir
-            </p>
-          </div>
+          <h3 className="text-sm font-bold text-[#0f172a]">
+            Görüşme Detayı &amp; Notlar
+          </h3>
           <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600">
             {sorted.length} Kayıt
           </span>
@@ -108,9 +103,6 @@ export function HistoryTab({ notes, studentId, student }: Props) {
               <MessageSquarePlus className="h-7 w-7 text-slate-300 mb-2" />
               <p className="text-xs font-medium text-slate-400">
                 Henüz kayıtlı görüşme veya danışman notu bulunmuyor.
-              </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Sağ taraftaki panelden yeni not ekleyebilirsiniz.
               </p>
             </div>
           ) : (

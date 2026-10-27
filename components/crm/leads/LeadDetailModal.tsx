@@ -474,14 +474,9 @@ export function LeadDetailModal({
             {/* SOL KOLON (7/12 — Yarıdan Geniş): SADECE Yukarıdan Aşağıya Not & Log Akışı */}
             <div className="lg:col-span-7 flex flex-col overflow-hidden bg-slate-50/40 p-5">
               <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-[#0f172a]">
-                    Görüşme Detayı &amp; İletişim Logları
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Son etkileşimler en üstte · Tek satırlık loglar ve detaylı not kartları
-                  </p>
-                </div>
+                <h3 className="text-sm font-bold text-[#0f172a]">
+                  Görüşme Detayı &amp; İletişim Logları
+                </h3>
                 <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600">
                   {parsedItems.length} Kayıt
                 </span>
@@ -493,9 +488,6 @@ export function LeadDetailModal({
                     <FileText className="h-6 w-6 mb-1.5 text-slate-300" />
                     <p className="text-xs font-medium">
                       Henüz kayıtlı görüşme veya iletişim logu bulunmuyor.
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Sağ taraftaki panelden not girebilir veya hızlı WhatsApp/Mail başlatabilirsiniz.
                     </p>
                   </div>
                 ) : (
@@ -735,14 +727,9 @@ export function LeadDetailModal({
           <div className="flex-1 overflow-y-auto p-6">
             <div className="mx-auto max-w-3xl space-y-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div>
-                  <h3 className="text-sm font-bold text-[#0f172a]">
-                    Aday Profil, Cinsiyet, Fotoğraf &amp; Danışman Bilgileri
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Cinsiyet bilgisine göre avatar silueti güncellenir veya fotoğraf URL&apos;si ekleyebilirsiniz.
-                  </p>
-                </div>
+                <h3 className="text-sm font-bold text-[#0f172a]">
+                  Aday Profil, Cinsiyet, Fotoğraf &amp; Danışman Bilgileri
+                </h3>
               </div>
 
               {!editState.success && editState.error && (
@@ -827,7 +814,7 @@ export function LeadDetailModal({
                       type="url"
                       name="avatarUrl"
                       defaultValue={lead.avatarUrl ?? ""}
-                      placeholder="https://... (Fotoğraf girilmezse cinsiyete göre siluet gösterilir)"
+                      placeholder="https://..."
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[#0f172a] focus:outline-none"
                     />
                   </div>

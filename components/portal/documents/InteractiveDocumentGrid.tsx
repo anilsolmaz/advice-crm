@@ -126,14 +126,9 @@ export function InteractiveDocumentGrid({
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
       {/* Header + Top-Right Visual Status Legend */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
-        <div>
-          <h2 className="text-base font-bold text-[#0f172a]">
-            Zorunlu Belge Durumu
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Belge yüklemek veya güncellemek için ilgili kutunun üzerine tıklayın
-          </p>
-        </div>
+        <h2 className="text-base font-bold text-[#0f172a]">
+          Zorunlu Belge Durumu
+        </h2>
 
         {/* Visual Status Legend in Top-Right Corner */}
         <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold">
