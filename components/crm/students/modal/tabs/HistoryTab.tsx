@@ -1,12 +1,12 @@
 // components/crm/students/modal/tabs/HistoryTab.tsx
 "use client";
 
+import { useState, useTransition } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { Pin, PinOff, Send, MessageSquarePlus } from "lucide-react";
+import { Pin, PinOff, Plus, MessageSquarePlus, User, Clock } from "lucide-react";
 import type { CRMAdvisorNote } from "@/types/crm";
 import { createAdvisorNote, toggleNotePin } from "@/actions/crm/notes";
 import { formatDateTime } from "@/lib/utils/date";
-import { useTransition } from "react";
 import { cn } from "@/lib/utils/cn";
 
 function SubmitButton() {
@@ -15,12 +15,36 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+      className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#0f172a] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a] disabled:opacity-50 transition-colors"
     >
-      <Send className="h-3.5 w-3.5" />
+      <Plus className="h-3.5 w-3.5 text-sky-400" />
       {pending ? "Kaydediliyor…" : "Not Ekle"}
     </button>
   );
+}
+
+function extractNoteTitleAndBody(rawNote: string): {
+  title: string;
+  body: string;
+  badgeClass: string;
+} {
+  const match = rawNote.match(/^\[([^\]]+)\]:?\s*([\s\S]*)$/);
+  const title = match ? match[1].trim() : "Danışman Notu";
+  const body = match ? match[2].trim() || rawNote : rawNote;
+
+  const t = title.toLowerCase();
+  let badgeClass = "bg-slate-100 text-slate-700 border-slate-200";
+  if (t.includes("e-posta") || t.includes("mail")) {
+    badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
+  } else if (t.includes("vize") || t.includes("evrak")) {
+    badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
+  } else if (t.includes("whatsapp") || t.includes("görüşme")) {
+    badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+  } else if (t.includes("muhasebe") || t.includes("ödeme") || t.includes("taksit")) {
+    badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+  }
+
+  return { title, body, badgeClass };
 }
 
 interface Props {
@@ -33,9 +57,10 @@ export function HistoryTab({ notes, studentId }: Props) {
     createAdvisorNote.bind(null, studentId),
     { success: false, error: "" },
   );
+  const [noteTitle, setNoteTitle] = useState("Görüşme Notu");
   const [isPending, startTransition] = useTransition();
 
-  // Pinned notes first, then chronological descending
+  // Pinned notes first, then chronological descending (newest on top)
   const sorted = [...notes].sort((a, b) => {
     if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -44,94 +69,119 @@ export function HistoryTab({ notes, studentId }: Props) {
   return (
     <div className="space-y-4">
       {/* Add note form */}
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-        <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-700">
-          <MessageSquarePlus className="h-4 w-4 text-blue-500" />
-          Yeni Not Ekle
-        </h3>
-        <form action={noteAction} className="space-y-3">
-          <textarea
-            name="note"
-            rows={3}
-            placeholder="Öğrenciyle ilgili notunuzu buraya yazın…"
-            className="w-full resize-none rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-700 placeholder-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-200"
-          />
+      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700">
+              Not Başlığı / Kaynak:
+            </span>
+            <select
+              name="noteTitleSelector"
+              value={noteTitle}
+              onChange={(e) => setNoteTitle(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 focus:border-[#0f172a] focus:outline-none"
+            >
+              <option value="Görüşme Notu">Görüşme Notu</option>
+              <option value="Vize & Evrak Notu">Vize &amp; Evrak Notu</option>
+              <option value="WhatsApp Görüşmesi">WhatsApp Görüşmesi</option>
+              <option value="İş / Okul Yerleştirme">İş / Okul Yerleştirme</option>
+              <option value="Ödeme & Taksit Notu">Ödeme &amp; Taksit Notu</option>
+              <option value="Özel Not">Özel Not</option>
+            </select>
+          </div>
+          <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+            {sorted.length} Kayıt · Son eklenen üstte
+          </span>
+        </div>
+
+        <form action={noteAction} className="space-y-2">
+          <input type="hidden" name="noteTitle" value={noteTitle} />
+          <div className="flex items-start gap-2">
+            <textarea
+              name="note"
+              rows={2}
+              placeholder="Öğrenciyle ilgili görüşme, vize, evrak veya ödeme notunuzu buraya yazın…"
+              className="flex-1 rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0f172a] focus:outline-none"
+            />
+            <SubmitButton />
+          </div>
           {!noteState.success && noteState.error && (
             <p className="text-xs text-red-600">{noteState.error}</p>
           )}
-          <div className="flex justify-end">
-            <SubmitButton />
-          </div>
         </form>
       </div>
 
-      {/* Note timeline */}
-      {sorted.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <MessageSquarePlus className="h-10 w-10 text-gray-200 mb-2" />
-          <p className="text-sm text-gray-400">Henüz not girilmemiş.</p>
-        </div>
-      )}
-
-      <div className="space-y-3">
-        {sorted.map((note) => (
-          <div
-            key={note.id}
-            className={cn(
-              "group relative rounded-xl border p-4 transition-colors",
-              note.isPinned
-                ? "border-amber-200 bg-amber-50"
-                : "border-gray-100 bg-white hover:bg-gray-50",
-            )}
-          >
-            {/* Pin badge */}
-            {note.isPinned && (
-              <span className="absolute right-3 top-3 text-xs font-medium text-amber-600">
-                📌 Sabitlenmiş
-              </span>
-            )}
-
-            {/* Author + time */}
-            <div className="mb-2 flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-                {note.authorName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-800">{note.authorName}</p>
-                <p className="text-[10px] text-gray-400">{formatDateTime(note.createdAt)}</p>
-              </div>
-            </div>
-
-            {/* Note text */}
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-              {note.note}
+      {/* Scrollable Minimal Note Cards (Newest First) */}
+      <div className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1">
+        {sorted.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-10 text-center">
+            <MessageSquarePlus className="h-8 w-8 text-slate-300 mb-2" />
+            <p className="text-xs font-medium text-slate-400">
+              Henüz kayıtlı görüşme veya danışman notu bulunmuyor.
             </p>
-
-            {/* Pin toggle — visible on hover, admin only via server action */}
-            <button
-              type="button"
-              onClick={() =>
-                startTransition(() => {
-                  void toggleNotePin(note.id, !note.isPinned);
-                })
-              }
-              disabled={isPending}
-              className="absolute bottom-3 right-3 hidden items-center gap-1 rounded-md px-2 py-1 text-[10px] text-gray-400 hover:text-amber-600 group-hover:flex disabled:opacity-50"
-            >
-              {note.isPinned ? (
-                <PinOff className="h-3 w-3" />
-              ) : (
-                <Pin className="h-3 w-3" />
-              )}
-              {note.isPinned ? "Sabitlemeyi Kaldır" : "Sabitle"}
-            </button>
           </div>
-        ))}
-      </div>
+        ) : (
+          sorted.map((note) => {
+            const parsed = extractNoteTitleAndBody(note.note);
+            return (
+              <div
+                key={note.id}
+                className={cn(
+                  "group relative rounded-xl border px-3.5 py-2.5 shadow-2xs transition-colors",
+                  note.isPinned
+                    ? "border-amber-200 bg-amber-50/70"
+                    : "border-slate-200 bg-white hover:border-slate-300",
+                )}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 mb-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${parsed.badgeClass}`}
+                    >
+                      {parsed.title}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+                      <User className="h-3 w-3 text-slate-400" />
+                      {note.authorName}
+                    </span>
+                    {note.isPinned && (
+                      <span className="text-[10px] font-bold text-amber-600">
+                        📌 Sabitli
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 tabular-nums">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      {formatDateTime(note.createdAt)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        startTransition(() => {
+                          void toggleNotePin(note.id, !note.isPinned);
+                        })
+                      }
+                      disabled={isPending}
+                      className="hidden items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-amber-600 group-hover:inline-flex"
+                    >
+                      {note.isPinned ? (
+                        <PinOff className="h-3 w-3" />
+                      ) : (
+                        <Pin className="h-3 w-3" />
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-      <p className="text-center text-[10px] text-gray-300">
-        Notlar değiştirilemez. Tüm kayıtlar kalıcı olarak saklanır.
-      </p>
+                <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
+                  {parsed.body}
+                </p>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

@@ -109,6 +109,7 @@ export function StudentDetailView({
   >("program");
   const [isPending, startTransition] = useTransition();
   const [noteText, setNoteText] = useState("");
+  const [noteTitle, setNoteTitle] = useState("Görüşme Notu");
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showNewProgramModal, setShowNewProgramModal] = useState(false);
   const [newProgramForm, setNewProgramForm] = useState({
@@ -337,14 +338,26 @@ export function StudentDetailView({
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowNewProgramModal((v) => !v)}
-            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-800 shadow-sm hover:bg-indigo-100"
-          >
-            <Plus className="h-4 w-4 text-indigo-600" />
-            Yeni Program / Dönem Ekle
-          </button>
+          {student.user.phone && (
+            <>
+              <a
+                href={`tel:${student.user.phone}`}
+                className="flex items-center gap-1.5 rounded-xl bg-[#0f172a] px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-800"
+              >
+                <Phone className="h-3.5 w-3.5 text-amber-400" />
+                Telefon Aç ({student.user.phone})
+              </a>
+              <a
+                href={`https://wa.me/90${student.user.phone.replace(/\D/g, "").replace(/^0/, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                WhatsApp&apos;tan Ulaş
+              </a>
+            </>
+          )}
 
           <button
             type="button"
@@ -353,6 +366,15 @@ export function StudentDetailView({
           >
             <Mail className="h-4 w-4 text-sky-300" />
             Mail Gönder
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowNewProgramModal((v) => !v)}
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-800 shadow-sm hover:bg-indigo-100"
+          >
+            <Plus className="h-4 w-4 text-indigo-600" />
+            Yeni Program / Dönem Ekle
           </button>
 
           <Link
@@ -612,7 +634,7 @@ export function StudentDetailView({
           )}
         >
           <Plane className="h-4 w-4" />
-          Program Operasyonu &amp; Aşamalar
+          İletişim, Notlar &amp; Operasyon ({notes?.length || 0})
         </button>
 
         <button
@@ -625,20 +647,20 @@ export function StudentDetailView({
           )}
         >
           <GraduationCap className="h-4 w-4" />
-          Application Süreçleri ({applications.length})
+          Başvuru Süreçleri ({applications.length})
         </button>
 
         <button
-          onClick={() => setActiveTab("personal")}
+          onClick={() => setActiveTab("documents")}
           className={cn(
             "flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors",
-            activeTab === "personal"
+            activeTab === "documents"
               ? "border-[#0f172a] text-[#0f172a]"
               : "border-transparent text-slate-500 hover:text-slate-900",
           )}
         >
-          <User className="h-4 w-4" />
-          Akademik Profil &amp; Kimlik
+          <FileText className="h-4 w-4" />
+          Belgeler &amp; Evrak ({documents?.length || 0})
         </button>
 
         <button
@@ -655,29 +677,16 @@ export function StudentDetailView({
         </button>
 
         <button
-          onClick={() => setActiveTab("documents")}
+          onClick={() => setActiveTab("personal")}
           className={cn(
             "flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors",
-            activeTab === "documents"
+            activeTab === "personal"
               ? "border-[#0f172a] text-[#0f172a]"
               : "border-transparent text-slate-500 hover:text-slate-900",
           )}
         >
-          <FileText className="h-4 w-4" />
-          Belgeler ({documents?.length || 0})
-        </button>
-
-        <button
-          onClick={() => setActiveTab("notes")}
-          className={cn(
-            "flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors",
-            activeTab === "notes"
-              ? "border-[#0f172a] text-[#0f172a]"
-              : "border-transparent text-slate-500 hover:text-slate-900",
-          )}
-        >
-          <MessageSquare className="h-4 w-4" />
-          Takım İçi Conversation (@mention) ({notes?.length || 0})
+          <User className="h-4 w-4" />
+          Profil, Kimlik &amp; Eğitim
         </button>
 
         <button
@@ -694,9 +703,153 @@ export function StudentDetailView({
         </button>
       </div>
 
-      {/* ── 1. PROGRAM TAB ───────────────────────────────────────────────── */}
+      {/* ── 1. PROGRAM & NOTES TAB (Primary Workspace) ──────────────────── */}
       {activeTab === "program" && (
         <div className="space-y-6">
+          {/* Minimal Scrollable Advisor Notes & Communication Cards (Always on 1st Screen) */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-[#1e3a8a]" />
+                  Görüşme Detayı, Danışman Notları &amp; Takım İçi (@mention)
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Öğrenciyle yapılan tüm görüşmeler, e-postalar ve ekip içi notlar (son eklenen en üstte)
+                </p>
+              </div>
+              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                {notes?.length || 0} Kayıt · Son eklenen üstte
+              </span>
+            </div>
+
+            {/* Minimal New Note Input Bar */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-600">
+                    Not Başlığı / Kaynak:
+                  </span>
+                  <select
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 focus:border-[#0f172a] focus:outline-none"
+                  >
+                    <option value="Görüşme Notu">Görüşme Notu</option>
+                    <option value="Vize & Evrak Notu">Vize &amp; Evrak Notu</option>
+                    <option value="WhatsApp Görüşmesi">WhatsApp Görüşmesi</option>
+                    <option value="İş / Okul Yerleştirme">İş / Okul Yerleştirme</option>
+                    <option value="Muhasebe & Taksit Notu">Muhasebe &amp; Taksit Notu</option>
+                    <option value="Özel Not">Özel Not</option>
+                  </select>
+                </div>
+
+                {staffList.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="text-[10px] font-bold text-slate-400 mr-1">
+                      Etiketle:
+                    </span>
+                    {staffList.map((st) => {
+                      const firstName = st.fullName.split(" ")[0];
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() =>
+                            setNoteText((prev) =>
+                              `${prev} @${firstName} `.trimStart(),
+                            )
+                          }
+                          className="rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-[#1e3a8a] hover:bg-blue-100"
+                        >
+                          @{firstName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <form
+                action={(fd) => {
+                  noteAction(fd);
+                  setNoteText("");
+                }}
+                className="flex items-start gap-2"
+              >
+                <input type="hidden" name="noteTitle" value={noteTitle} />
+                <textarea
+                  name="note"
+                  rows={2}
+                  required
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Öğrenciyle ilgili görüşme, vize, iş teklifi veya ödeme notunu yazın (@İsim ile ekip arkadaşınızı etiketleyebilirsiniz)…"
+                  className="flex-1 rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0f172a] focus:outline-none"
+                />
+                <NoteSubmitButton />
+              </form>
+            </div>
+
+            {/* Scrollable Minimal Note Cards (Newest First) */}
+            <div className="max-h-60 overflow-y-auto space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-2.5">
+              {notes && notes.length > 0 ? (
+                notes.map((n: any) => {
+                  const raw = String(n.note || "");
+                  const bracketMatch = raw.match(/^\[([^\]]+)\]:?\s*([\s\S]*)$/);
+                  const parsedTitle = bracketMatch
+                    ? bracketMatch[1].trim()
+                    : "Danışman Notu";
+                  const parsedBody = bracketMatch
+                    ? bracketMatch[2].trim() || raw
+                    : raw;
+                  const tLower = parsedTitle.toLowerCase();
+                  const badgeCls =
+                    tLower.includes("e-posta") || tLower.includes("mail")
+                      ? "bg-sky-50 text-sky-700 border-sky-200"
+                      : tLower.includes("vize") || tLower.includes("evrak")
+                      ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                      : tLower.includes("whatsapp") || tLower.includes("görüşme")
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : tLower.includes("muhasebe") || tLower.includes("taksit")
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-slate-100 text-slate-700 border-slate-200";
+
+                  return (
+                    <div
+                      key={n.id}
+                      className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-2xs hover:border-slate-300 transition-colors"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 mb-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${badgeCls}`}
+                          >
+                            {parsedTitle}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+                            <User className="h-3 w-3 text-slate-400" />
+                            {n.author?.fullName || "Danışman"}
+                          </span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 tabular-nums">
+                          <Clock className="h-3 w-3 text-slate-400" />
+                          {formatDateTime(n.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
+                        {parsedBody}
+                      </p>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  Henüz kayıtlı görüşme veya danışman notu bulunmuyor.
+                </div>
+              )}
+            </div>
+          </div>
           {student.program === "WORK_AND_TRAVEL" && (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">

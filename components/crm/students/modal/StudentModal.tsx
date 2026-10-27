@@ -66,7 +66,7 @@ export function StudentModal({
   notes,
   onClose,
 }: StudentModalProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>("personal");
+  const [activeTab, setActiveTab] = useState<TabKey>("history");
 
   const programTabLabel: Record<string, string> = {
     WORK_AND_TRAVEL: "İş Yerleştirme",
@@ -77,13 +77,13 @@ export function StudentModal({
   };
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "personal", label: "Kişisel Bilgiler" },
-    { key: "emergency", label: "Acil Kişi" },
-    { key: "education", label: "Eğitim & İş" },
+    { key: "history", label: `İletişim & Notlar (${notes.length})` },
     { key: "job", label: programTabLabel[student.program] || "Program Operasyonu" },
-    { key: "payments", label: "Ödemeler" },
-    { key: "documents", label: "Belgeler" },
-    { key: "history", label: "Geçmiş" },
+    { key: "documents", label: `Belgeler (${documents.length})` },
+    { key: "payments", label: "Ödemeler & Taksit" },
+    { key: "personal", label: "Kişisel Bilgiler" },
+    { key: "education", label: "Eğitim & İş" },
+    { key: "emergency", label: "Acil Durum Kişisi" },
   ];
 
   return (

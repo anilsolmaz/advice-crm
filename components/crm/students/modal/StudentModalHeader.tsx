@@ -1,11 +1,12 @@
 // components/crm/students/modal/StudentModalHeader.tsx
 "use client";
 
-import { useTransition } from "react";
-import { Printer, FileDown, Camera } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Printer, FileDown, Camera, PhoneCall, MessageCircle, Mail } from "lucide-react";
 import type { CRMStudentDetail, CRMWatDetail } from "@/types/crm";
 import { PROGRAM_LABELS } from "@/types/crm";
 import { ProgramBadge } from "@/components/crm/common/ProgramBadge";
+import { EmailComposeModal } from "@/components/crm/common/EmailComposeModal";
 import { advanceWatStep } from "@/actions/crm/students";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/date";
@@ -38,8 +39,10 @@ interface Props {
 
 export function StudentModalHeader({ student, watDetail }: Props) {
   const [isPending, startTransition] = useTransition();
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const currentStep = getWatCurrentStep(watDetail);
   const isWat = student.program === "WORK_AND_TRAVEL";
+  const cleanWaPhone = (student.user.phone || "").replace(/\D/g, "").replace(/^0/, "");
 
   function handleStepClick(step: number) {
     if (!isWat || step <= currentStep) return;
@@ -89,7 +92,35 @@ export function StudentModalHeader({ student, watDetail }: Props) {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 mr-8">
+              {student.user.phone && (
+                <>
+                  <a
+                    href={`tel:${student.user.phone}`}
+                    className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors"
+                  >
+                    <PhoneCall className="h-3.5 w-3.5 text-amber-400" />
+                    Telefon Aç
+                  </a>
+                  <a
+                    href={`https://wa.me/90${cleanWaPhone}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    WhatsApp
+                  </a>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-[#1e3a8a] px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-800 transition-colors"
+              >
+                <Mail className="h-3.5 w-3.5 text-sky-300" />
+                Mail Gönder
+              </button>
               <button
                 onClick={() => window.print()}
                 className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
@@ -97,14 +128,18 @@ export function StudentModalHeader({ student, watDetail }: Props) {
                 <Printer className="h-3.5 w-3.5" />
                 Yazdır
               </button>
-              <button
-                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                <FileDown className="h-3.5 w-3.5" />
-                CV İndir (PDF)
-              </button>
             </div>
           </div>
+
+          {showEmailModal && (
+            <EmailComposeModal
+              recipientName={student.user.fullName}
+              recipientEmail={student.user.email}
+              programLabel={PROGRAM_LABELS[student.program]}
+              studentId={student.id}
+              onClose={() => setShowEmailModal(false)}
+            />
+          )}
 
           {/* WAT progress stepper */}
           {isWat && (

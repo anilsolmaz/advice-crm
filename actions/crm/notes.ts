@@ -20,10 +20,16 @@ export async function createAdvisorNote(
 ): Promise<NoteActionState> {
   const advisor = await requireStaff();
 
-  const note = (formData.get("note") as string | null)?.trim();
-  if (!note) {
+  const rawNote = (formData.get("note") as string | null)?.trim();
+  const noteTitle = (formData.get("noteTitle") as string | null)?.trim();
+  if (!rawNote) {
     return { success: false, error: "Not boş olamaz." };
   }
+
+  const note =
+    noteTitle && !rawNote.startsWith("[")
+      ? `[${noteTitle}] ${rawNote}`
+      : rawNote;
 
   if (note.length > 2000) {
     return { success: false, error: "Not en fazla 2000 karakter olabilir." };
