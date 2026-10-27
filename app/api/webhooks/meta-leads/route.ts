@@ -3,26 +3,41 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Program, LeadSource } from "@prisma/client";
 
-// Meta challenge verification token (configurable in env)
-const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || "advice_meta_webhook_secret_2026";
+const VERIFY_TOKEN =
+  process.env.META_WEBHOOK_VERIFY_TOKEN || "advice_meta_webhook_secret_2026";
+const PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN || "";
 
-/**
- * Maps incoming lead ad form names or custom field tags to Program vertical
- */
 function resolveProgram(formNameOrTag?: string): Program {
   if (!formNameOrTag) return "WORK_AND_TRAVEL";
   const normalized = formNameOrTag.toLowerCase();
 
-  if (normalized.includes("wat") || normalized.includes("work") || normalized.includes("travel")) {
+  if (
+    normalized.includes("wat") ||
+    normalized.includes("work") ||
+    normalized.includes("travel")
+  ) {
     return "WORK_AND_TRAVEL";
   }
-  if (normalized.includes("akademi") || normalized.includes("academy") || normalized.includes("universite") || normalized.includes("master")) {
+  if (
+    normalized.includes("akademi") ||
+    normalized.includes("academy") ||
+    normalized.includes("universite") ||
+    normalized.includes("master")
+  ) {
     return "ACADEMY";
   }
-  if (normalized.includes("dil") || normalized.includes("language") || normalized.includes("english")) {
+  if (
+    normalized.includes("dil") ||
+    normalized.includes("language") ||
+    normalized.includes("english")
+  ) {
     return "LANGUAGE_SCHOOL";
   }
-  if (normalized.includes("yaz") || normalized.includes("summer") || normalized.includes("camp")) {
+  if (
+    normalized.includes("yaz") ||
+    normalized.includes("summer") ||
+    normalized.includes("camp")
+  ) {
     return "SUMMER_CAMP";
   }
   if (normalized.includes("vize") || normalized.includes("visa")) {
@@ -32,8 +47,38 @@ function resolveProgram(formNameOrTag?: string): Program {
 }
 
 /**
- * GET Handler: Meta Webhook Handshake Verification
+ * Fetches full lead details from Meta Graph API when META_PAGE_ACCESS_TOKEN is configured.
  */
+async function fetchMetaGraphLead(leadgenId: string) {
+  if (!PAGE_ACCESS_TOKEN || !leadgenId) return null;
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/${leadgenId}?access_token=${encodeURIComponent(
+        PAGE_ACCESS_TOKEN,
+      )}`,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const fieldMap: Record<string, string> = {};
+    if (Array.isArray(data.field_data)) {
+      for (const item of data.field_data) {
+        if (item.name && Array.isArray(item.values) && item.values[0]) {
+          fieldMap[item.name] = item.values[0];
+        }
+      }
+    }
+    return {
+      fullName: fieldMap.full_name || fieldMap.name,
+      email: fieldMap.email,
+      phone: fieldMap.phone_number || fieldMap.phone,
+      city: fieldMap.city,
+      program: fieldMap.program,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("hub.mode");
@@ -44,36 +89,60 @@ export async function GET(request: NextRequest) {
     return new NextResponse(challenge, { status: 200 });
   }
 
-  return NextResponse.json({ error: "Doğrulama başarısız (Invalid verify token)" }, { status: 403 });
+  return NextResponse.json(
+    { error: "Doğrulama başarısız (Invalid verify token)" },
+    { status: 403 },
+  );
 }
 
-/**
- * POST Handler: Process incoming Meta Lead Ads event
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Verify object type is page/leadgen
     if (body.object !== "page") {
       return NextResponse.json({ status: "ignored" }, { status: 200 });
     }
 
     const entries = body.entry || [];
-    const createdLeads = [];
+    const createdLeads: string[] = [];
 
     for (const entry of entries) {
       const changes = entry.changes || [];
       for (const change of changes) {
         if (change.field === "leadgen") {
-          const leadgenVal = change.value;
-          // In real production, leadgen_id is queried via Meta Graph API.
-          // For webhook ingestion payload adapter:
-          const fullName = leadgenVal.full_name || leadgenVal.name || "Meta Adayı";
-          const email = leadgenVal.email || `lead_${leadgenVal.leadgen_id || Date.now()}@meta-ad.com`;
-          const phone = leadgenVal.phone_number || leadgenVal.phone || "05000000000";
-          const formName = leadgenVal.form_name || leadgenVal.campaign_name || "";
+          const leadgenVal = change.value || {};
+          const graphLead = await fetchMetaGraphLead(leadgenVal.leadgen_id);
+
+          const fullName =
+            graphLead?.fullName ||
+            leadgenVal.full_name ||
+            leadgenVal.name ||
+            "Meta Adayı";
+          const email =
+            graphLead?.email ||
+            leadgenVal.email ||
+            `lead_${leadgenVal.leadgen_id || Date.now()}@meta-ad.com`;
+          const phone =
+            graphLead?.phone ||
+            leadgenVal.phone_number ||
+            leadgenVal.phone ||
+            "05000000000";
+          const city = graphLead?.city || leadgenVal.city || null;
+          const formName =
+            graphLead?.program ||
+            leadgenVal.form_name ||
+            leadgenVal.campaign_name ||
+            "";
           const program = resolveProgram(formName);
+
+          // Balanced advisor assignment
+          const advisors = await prisma.user.findMany({
+            where: { role: { in: ["ADVISOR", "ADMIN"] }, isActive: true },
+            include: { _count: { select: { leadsAsAdvisor: true } } },
+          });
+          const assignedAdvisor = [...advisors].sort(
+            (a, b) => a._count.leadsAsAdvisor - b._count.leadsAsAdvisor,
+          )[0];
 
           const existingLead = await prisma.lead.findFirst({
             where: { email },
@@ -86,9 +155,10 @@ export async function POST(request: NextRequest) {
               data: {
                 fullName,
                 phone,
+                city: city || existingLead.city,
                 program,
                 source: "SOCIAL_MEDIA" as LeadSource,
-                notes: `Meta Lead Ads (Form ID: ${leadgenVal.form_id || "N/A"}, Ad ID: ${leadgenVal.ad_id || "N/A"})`,
+                notes: `Meta Lead Ads Güncellendi (Form: ${formName || "Meta Form"})`,
               },
             });
             leadId = updated.id;
@@ -98,13 +168,27 @@ export async function POST(request: NextRequest) {
                 fullName,
                 email,
                 phone,
+                city,
                 program,
+                advisorId: assignedAdvisor?.id || null,
                 source: "SOCIAL_MEDIA" as LeadSource,
                 status: "INTERESTED",
                 notes: `Meta Lead Ads İçe Aktarıldı. Form: ${formName || "Varsayılan Form"}`,
               },
             });
             leadId = created.id;
+
+            if (assignedAdvisor) {
+              await prisma.notification.create({
+                data: {
+                  userId: assignedAdvisor.id,
+                  type: "NEW_LEAD",
+                  title: "📲 Meta Reklamlarından Yeni Lead",
+                  message: `${fullName} (${phone}) Meta formunu doldurdu ve size atandı.`,
+                  linkUrl: "/leads",
+                },
+              });
+            }
           }
 
           createdLeads.push(leadId);
@@ -121,7 +205,7 @@ export async function POST(request: NextRequest) {
     console.error("Meta Webhook Error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "İşleme hatası" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

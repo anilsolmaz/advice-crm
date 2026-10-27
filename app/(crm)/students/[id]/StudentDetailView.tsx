@@ -32,8 +32,9 @@ import {
   Trash2,
 } from "lucide-react";
 import type { Program } from "@prisma/client";
-import { DOCUMENT_TYPE_LABELS } from "@/types/crm";
+import { DOCUMENT_TYPE_LABELS, PROGRAM_LABELS } from "@/types/crm";
 import { ProgramBadge } from "@/components/crm/common/ProgramBadge";
+import { EmailComposeModal } from "@/components/crm/common/EmailComposeModal";
 import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
 import { toggleInstallmentPaid, advanceWatStep } from "@/actions/crm/students";
@@ -72,6 +73,7 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
   >("program");
   const [isPending, startTransition] = useTransition();
   const [noteText, setNoteText] = useState("");
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // WAT Accommodation Commission state
   const [accSold, setAccSold] = useState<boolean>(
@@ -255,7 +257,16 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowEmailModal(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-800"
+          >
+            <Mail className="h-4 w-4 text-sky-300" />
+            Mail Gönder
+          </button>
+
           <Link
             href={`/students/${student.id}/cv`}
             className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -1428,6 +1439,16 @@ export function StudentDetailView({ student, staffList = [] }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {showEmailModal && (
+        <EmailComposeModal
+          recipientName={student.user.fullName}
+          recipientEmail={student.user.email}
+          programLabel={PROGRAM_LABELS[student.program as Program]}
+          studentId={student.id}
+          onClose={() => setShowEmailModal(false)}
+        />
       )}
     </div>
   );

@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertCircle,
   MessageCircle,
+  Mail,
 } from "lucide-react";
 import type { CRMLeadRow, CRMAdvisorNote, Program } from "@/types/crm";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/types/crm";
 import { LeadStatusBadge } from "./LeadStatusBadge";
 import { ProgramBadge } from "@/components/crm/common/ProgramBadge";
+import { EmailComposeModal } from "@/components/crm/common/EmailComposeModal";
 import {
   updateLead,
   logLeadCall,
@@ -70,6 +72,7 @@ export function LeadDetailModal({
   const [callSaved, setCallSaved] = useState(false);
   const [callOutcome, setCallOutcome] = useState("REACHED");
   const [callNotes, setCallNotes] = useState("");
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Suggested next follow-up date when call outcome changes
@@ -127,6 +130,14 @@ export function LeadDetailModal({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowEmailModal(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700 border border-sky-400/30 transition-colors"
+            >
+              <Mail className="h-4 w-4 text-sky-300" />
+              Mail Gönder
+            </button>
             {lead.status !== "REGISTERED" && (
               <button
                 type="button"
@@ -503,6 +514,16 @@ export function LeadDetailModal({
             </div>
           </div>
         </div>
+
+        {showEmailModal && (
+          <EmailComposeModal
+            recipientName={lead.fullName}
+            recipientEmail={lead.email}
+            programLabel={PROGRAM_LABELS[lead.program as Program]}
+            leadId={lead.id}
+            onClose={() => setShowEmailModal(false)}
+          />
+        )}
       </div>
     </div>
   );

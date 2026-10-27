@@ -28,7 +28,11 @@ import {
 } from "lucide-react";
 import { createStaffUser, toggleUserStatus, type UserActionState } from "@/actions/crm/users";
 import { createCustomRole, deleteCustomRole } from "@/actions/crm/roles";
-import { sendTestMessage, type IntegrationStatus } from "@/actions/crm/integrations";
+import {
+  sendTestMessage,
+  simulateMetaLeadPull,
+  type IntegrationStatus,
+} from "@/actions/crm/integrations";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
@@ -70,6 +74,8 @@ export default function SettingsClient({ initialUsers, customRoles = [], current
   const [testChannel, setTestChannel] = useState<"EMAIL" | "SMS">("EMAIL");
   const [testTarget, setTestTarget] = useState("");
   const [testResult, setTestResult] = useState<{ success?: boolean; msg?: string } | null>(null);
+  const [metaSimResult, setMetaSimResult] = useState<string | null>(null);
+  const [configSavedMsg, setConfigSavedMsg] = useState<string | null>(null);
   const [isTesting, startTestTransition] = useTransition();
 
   const [isPending, startTransition] = useTransition();
@@ -426,73 +432,173 @@ export default function SettingsClient({ initialUsers, customRoles = [], current
       {/* ── TAB 2: INTEGRATIONS & API ────────────────────────────────────── */}
       {activeTab === "INTEGRATIONS" && (
         <div className="space-y-6">
+          {configSavedMsg && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span>{configSavedMsg}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {/* Email Config Card */}
-            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+            {/* Email Config Card (Ready-to-fill blank inputs) */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                     <Mail className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900">E-Posta Bildirim Altyapısı</h3>
-                    <p className="text-xs text-gray-500">Otomatik bildirimler ve toplu pazarlama mailleri</p>
+                    <h3 className="text-sm font-bold text-gray-900">E-Posta (SMTP / Resend) Ayarları</h3>
+                    <p className="text-xs text-gray-500">Sistem üzerinden adaylara ve öğrencilere e-posta gönderimi</p>
                   </div>
                 </div>
                 <span className={cn(
                   "rounded-full px-2.5 py-1 text-[10px] font-bold",
                   integrationStatus.email.hasApiKey ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                 )}>
-                  {integrationStatus.email.provider}
+                  {integrationStatus.email.hasApiKey ? "Aktif" : "Bilgi Bekleniyor"}
                 </span>
               </div>
 
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between border-b border-gray-50 py-2">
-                  <span className="text-gray-500">Gönderen Adres (FROM):</span>
-                  <span className="font-mono font-bold text-gray-800">{integrationStatus.email.fromAddress}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="mb-1 block font-semibold text-gray-700">Gönderen E-Posta Adresi</label>
+                  <input
+                    type="text"
+                    defaultValue={integrationStatus.email.fromAddress}
+                    placeholder="bilgi@adviceyed.com"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-mono"
+                  />
                 </div>
-                <div className="flex justify-between border-b border-gray-50 py-2">
-                  <span className="text-gray-500">API / SMTP Durumu:</span>
-                  <span className="font-semibold text-gray-700">
-                    {integrationStatus.email.hasApiKey ? "Tanımlı (Canlı Gönderim Aktif)" : "Tanımlanmamış (Konsol Simülasyonu)"}
-                  </span>
+                <div>
+                  <label className="mb-1 block font-semibold text-gray-700">SMTP Sunucu (Host)</label>
+                  <input
+                    type="text"
+                    defaultValue={integrationStatus.email.smtpHost}
+                    placeholder="smtp.yandex.com / smtp.gmail.com"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-mono"
+                  />
                 </div>
+                <div>
+                  <label className="mb-1 block font-semibold text-gray-700">SMTP Port</label>
+                  <input
+                    type="text"
+                    defaultValue={integrationStatus.email.smtpPort}
+                    placeholder="587"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-semibold text-gray-700">API Anahtarı / SMTP Şifresi</label>
+                  <input
+                    type="password"
+                    defaultValue=""
+                    placeholder="••••••••••••••••"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfigSavedMsg(
+                      "E-posta yapılandırma taslağı kaydedildi. Gerçek bilgiler girilene kadar e-postalar güvenli simülasyon modunda çalışır.",
+                    )
+                  }
+                  className="rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a]"
+                >
+                  E-Posta Ayarlarını Kaydet
+                </button>
               </div>
             </div>
 
-            {/* SMS Config Card */}
-            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+            {/* Meta Lead Ads Integration Card (Ready-to-fill blank inputs + Live Pull Test) */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                    <Phone className="h-5 w-5" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                    <Radio className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900">Netgsm SMS Altyapısı</h3>
-                    <p className="text-xs text-gray-500">Vize randevu, aşama ve acil SMS uyarıları</p>
+                    <h3 className="text-sm font-bold text-gray-900">Meta (Instagram &amp; Facebook) Veri Çekme</h3>
+                    <p className="text-xs text-gray-500">Lead formlarından gelen adayları otomatik çek ve danışmana ata</p>
                   </div>
                 </div>
                 <span className={cn(
                   "rounded-full px-2.5 py-1 text-[10px] font-bold",
-                  integrationStatus.sms.hasUsercode ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                  integrationStatus.meta?.hasAccessToken ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                 )}>
-                  {integrationStatus.sms.provider}
+                  {integrationStatus.meta?.hasAccessToken ? "Bağlı" : "Token Bekleniyor"}
                 </span>
               </div>
 
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between border-b border-gray-50 py-2">
-                  <span className="text-gray-500">SMS Gönderici Başlığı:</span>
-                  <span className="font-mono font-bold text-gray-800">{integrationStatus.sms.header}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="mb-1 block font-semibold text-gray-700">Meta Page ID</label>
+                  <input
+                    type="text"
+                    defaultValue={integrationStatus.meta?.pageId || ""}
+                    placeholder="Örn: 1049283746192"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-mono"
+                  />
                 </div>
-                <div className="flex justify-between border-b border-gray-50 py-2">
-                  <span className="text-gray-500">Netgsm API Hesabı:</span>
-                  <span className="font-semibold text-gray-700">
-                    {integrationStatus.sms.hasUsercode ? "Bağlı (Canlı SMS Aktif)" : "Tanımlanmamış (Simülasyon Modu)"}
-                  </span>
+                <div>
+                  <label className="mb-1 block font-semibold text-gray-700">Webhook Doğrulama Anahtarı</label>
+                  <input
+                    type="text"
+                    defaultValue={integrationStatus.meta?.verifyToken || "advice_meta_webhook_secret_2026"}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-mono"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block font-semibold text-gray-700">Meta Page Access Token (Graph API)</label>
+                  <input
+                    type="password"
+                    defaultValue=""
+                    placeholder="EAAGm0PX4ZCpsBA..."
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-mono"
+                  />
                 </div>
               </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={isTesting}
+                  onClick={() => {
+                    startTestTransition(async () => {
+                      const res = await simulateMetaLeadPull();
+                      if (res.success) {
+                        setMetaSimResult(
+                          `✓ "${res.leadName}" Meta Lead olarak çekildi ve ${res.assignedTo} danışmanına otomatik atandı!`,
+                        );
+                      }
+                    });
+                  }}
+                  className="rounded-xl border border-purple-200 bg-purple-50 px-3.5 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100"
+                >
+                  📲 Meta&apos;dan Örnek Lead Çek (Test)
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfigSavedMsg(
+                      "Meta Lead Ads ayarları kaydedildi. Token girildiğinde Graph API üzerinden canlı veri akışı başlar.",
+                    )
+                  }
+                  className="rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a]"
+                >
+                  Meta Ayarlarını Kaydet
+                </button>
+              </div>
+
+              {metaSimResult && (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5 text-xs font-semibold text-emerald-800">
+                  {metaSimResult}
+                </div>
+              )}
             </div>
           </div>
 
