@@ -60,43 +60,54 @@ function cleanAdvisorLabel(rawName?: string | null): string {
   return rawName.replace(/\s*\(\s*Danışman\s*\)/gi, "").trim();
 }
 
-function getBadgeStyleForSource(sourceOrTitle: string): string {
+function getBadgeStyleForSource(sourceOrTitle: string): { style: string; icon: string } {
   const s = sourceOrTitle.toLowerCase();
-  if (s.includes("kayıt oldu") || s.includes("kesin kayıt")) {
-    return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (s.includes("kayıt")) {
+    return { style: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: "🎉" };
   }
-  if (s.includes("ulaşıldı") || s.includes("ilgileniyor") || s.includes("çok ilgili")) {
-    return "bg-blue-50 text-blue-700 border-blue-200";
+  if (s.includes("ulaşıldı") || s.includes("görüşüldü")) {
+    return { style: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: "📞" };
   }
-  if (s.includes("ulaşılamadı") || s.includes("meşgul") || s.includes("cevap yok")) {
-    return "bg-amber-50 text-amber-700 border-amber-200";
+  if (s.includes("ilgili") || s.includes("ilgileniyor")) {
+    return { style: "bg-blue-50 text-blue-700 border-blue-200", icon: "⭐" };
+  }
+  if (s.includes("meşgul") || s.includes("sonra ara")) {
+    return { style: "bg-amber-50 text-amber-700 border-amber-200", icon: "⏳" };
+  }
+  if (s.includes("ulaşılamadı") || s.includes("cevap yok")) {
+    return { style: "bg-rose-50 text-rose-700 border-rose-200", icon: "📵" };
   }
   if (s.includes("ilgilenmiyor")) {
-    return "bg-rose-50 text-rose-700 border-rose-200";
+    return { style: "bg-slate-100 text-slate-700 border-slate-200", icon: "⛔" };
+  }
+  if (s.includes("whatsapp")) {
+    return { style: "bg-emerald-50 text-emerald-800 border-emerald-200", icon: "💬" };
   }
   if (s.includes("e-posta") || s.includes("mail")) {
-    return "bg-sky-50 text-sky-700 border-sky-200";
+    return { style: "bg-sky-50 text-sky-700 border-sky-200", icon: "✉️" };
   }
-  if (
-    s.includes("ilk kayıt") ||
-    s.includes("meta") ||
-    s.includes("google") ||
-    s.includes("web") ||
-    s.includes("aktarım")
-  ) {
-    return "bg-indigo-50 text-indigo-700 border-indigo-200";
+  if (s.includes("profil") || s.includes("bütçe")) {
+    return { style: "bg-purple-50 text-purple-700 border-purple-200", icon: "💰" };
   }
-  return "bg-slate-100 text-slate-700 border-slate-200";
+  if (s.includes("vize") || s.includes("evrak")) {
+    return { style: "bg-indigo-50 text-indigo-700 border-indigo-200", icon: "📁" };
+  }
+  if (s.includes("özel")) {
+    return { style: "bg-slate-100 text-slate-700 border-slate-200", icon: "🔒" };
+  }
+  if (s === "log" || s.startsWith("log")) {
+    return { style: "bg-amber-50 text-amber-800 border-amber-200", icon: "⚡" };
+  }
+  return { style: "bg-slate-100 text-slate-700 border-slate-200", icon: "📝" };
 }
 
 function isSingleLineLogItem(sourceOrTitle: string, content: string): boolean {
-  const s = sourceOrTitle.toLowerCase();
-  const c = content.toLowerCase();
+  const s = sourceOrTitle.toLowerCase().trim();
+  const c = content.toLowerCase().trim();
 
-  if (s === "log" || s.startsWith("log ·") || s.endsWith("log")) return true;
-  if (s.includes("whatsapp") && content.length < 90) return true;
-  if ((s.includes("mail") || s.includes("e-posta")) && content.length < 90) return true;
-  if (c.includes("welcome maili") || c.includes("görüşme başlatıldı")) return true;
+  // ONLY true system events generated automatically (e.g. clicking WhatsApp/Mail log button)
+  if (s === "log" || s === "sistem logu" || s.startsWith("log ·")) return true;
+  if (c.includes("üzerinden görüşme açıldı") || c.includes("welcome maili gönderildi")) return true;
   if (c.startsWith("---") && c.endsWith("---")) return true;
 
   return false;
@@ -634,42 +645,48 @@ export function LeadDetailModal({
                   </div>
                 ) : (
                   parsedItems.map((item) => {
-                    // Single-line log style (e.g. "---- Welcome maili atıldı ---")
+                    const badgeInfo = getBadgeStyleForSource(item.sourceOrTitle);
+                    const displayTitle =
+                      item.sourceOrTitle === "LOG"
+                        ? "İletişim Logu"
+                        : item.sourceOrTitle;
+
+                    // Single-line log style (automated communication event)
                     if (item.isLog) {
                       return (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-2xs hover:border-slate-300 transition-colors"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-slate-50/70 px-3.5 py-1.5 text-xs text-slate-700 shadow-2xs hover:border-slate-300 transition-colors"
                         >
                           <div className="flex items-center gap-2 min-w-0 pr-2">
-                            <span className="text-slate-300 font-mono text-[10px]">---</span>
-                            <span className="inline-flex items-center gap-1 font-bold text-[#1e3a8a] text-[11px] shrink-0">
-                              {item.sourceOrTitle.toLowerCase().includes("mail") ||
-                              item.content.toLowerCase().includes("mail")
-                                ? "✉️"
-                                : item.sourceOrTitle.toLowerCase().includes("whatsapp") ||
-                                  item.content.toLowerCase().includes("whatsapp")
-                                ? "💬"
-                                : "⚡"}
-                              {item.sourceOrTitle === "LOG"
-                                ? "İletişim Logu"
-                                : item.sourceOrTitle}
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold shrink-0",
+                                badgeInfo.style,
+                              )}
+                            >
+                              <span>{badgeInfo.icon}</span>
+                              <span>{displayTitle}</span>
                             </span>
-                            <span className="text-slate-300">·</span>
-                            <span className="truncate text-slate-700 font-medium text-[11px]">
+                            <span className="truncate text-slate-800 font-medium text-[11px]">
                               {item.content}
                             </span>
-                            <span className="text-slate-300 font-mono text-[10px]">---</span>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0 text-[10px] text-slate-400">
-                            <span className="font-semibold text-slate-600">{item.author}</span>
-                            <span className="tabular-nums font-mono">{item.dateTime}</span>
+                          <div className="flex items-center gap-2.5 shrink-0 text-[10px] text-slate-500">
+                            <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
+                              <User className="h-3 w-3 text-slate-400" />
+                              {item.author}
+                            </span>
+                            <span className="inline-flex items-center gap-1 font-mono text-slate-400 tabular-nums">
+                              <Clock className="h-3 w-3 text-slate-400" />
+                              {item.dateTime}
+                            </span>
                           </div>
                         </div>
                       );
                     }
 
-                    // Rich card style for discussion notes
+                    // Rich card style for all notes & call outcomes
                     return (
                       <div
                         key={item.id}
@@ -678,11 +695,13 @@ export function LeadDetailModal({
                         <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 mb-1.5">
                           <div className="flex flex-wrap items-center gap-2">
                             <span
-                              className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${getBadgeStyleForSource(
-                                item.sourceOrTitle,
-                              )}`}
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold",
+                                badgeInfo.style,
+                              )}
                             >
-                              {item.sourceOrTitle}
+                              <span>{badgeInfo.icon}</span>
+                              <span>{displayTitle}</span>
                             </span>
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
                               <User className="h-3 w-3 text-slate-400" />

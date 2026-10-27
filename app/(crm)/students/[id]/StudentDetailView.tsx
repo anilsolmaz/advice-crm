@@ -810,37 +810,58 @@ export function StudentDetailView({
                       : "bg-slate-100 text-slate-700 border-slate-200";
 
                   const isLog =
-                    tLower.includes("log") ||
-                    ((tLower.includes("mail") || tLower.includes("whatsapp")) &&
-                      parsedBody.length < 90);
+                    tLower === "log" ||
+                    tLower === "sistem logu" ||
+                    parsedBody.includes("üzerinden görüşme açıldı") ||
+                    parsedBody.includes("welcome maili gönderildi");
+
+                  const badgeIcon = tLower.includes("mail")
+                    ? "✉️"
+                    : tLower.includes("whatsapp")
+                    ? "💬"
+                    : tLower.includes("vize") || tLower.includes("evrak")
+                    ? "📁"
+                    : tLower.includes("muhasebe") || tLower.includes("taksit")
+                    ? "💳"
+                    : tLower.includes("iş") || tLower.includes("okul")
+                    ? "🎓"
+                    : tLower.includes("özel")
+                    ? "🔒"
+                    : tLower.includes("log")
+                    ? "⚡"
+                    : "📞";
+
+                  const authorName = (
+                    n.author?.fullName || "Danışman"
+                  ).replace(/\s*\(\s*Danışman\s*\)/gi, "");
 
                   if (isLog) {
                     return (
                       <div
                         key={n.id}
-                        className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-2xs hover:border-slate-300 transition-colors"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-slate-50/70 px-3.5 py-1.5 text-xs text-slate-700 shadow-2xs hover:border-slate-300 transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0 pr-2">
-                          <span className="text-slate-300 font-mono text-[10px]">---</span>
-                          <span className="inline-flex items-center gap-1 font-bold text-[#1e3a8a] text-[11px] shrink-0">
-                            {tLower.includes("mail")
-                              ? "✉️"
-                              : tLower.includes("whatsapp")
-                              ? "💬"
-                              : "⚡"}
-                            {parsedTitle}
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold shrink-0",
+                              badgeCls,
+                            )}
+                          >
+                            <span>{badgeIcon}</span>
+                            <span>{parsedTitle === "LOG" ? "Sistem Logu" : parsedTitle}</span>
                           </span>
-                          <span className="text-slate-300">·</span>
-                          <span className="truncate text-slate-700 font-medium text-[11px]">
+                          <span className="truncate text-slate-800 font-medium text-[11px]">
                             {parsedBody}
                           </span>
-                          <span className="text-slate-300 font-mono text-[10px]">---</span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0 text-[10px] text-slate-400">
-                          <span className="font-semibold text-slate-600">
-                            {(n.author?.fullName || "Danışman").replace(/\s*\(\s*Danışman\s*\)/gi, "")}
+                        <div className="flex items-center gap-2.5 shrink-0 text-[10px] text-slate-500">
+                          <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
+                            <User className="h-3 w-3 text-slate-400" />
+                            {authorName}
                           </span>
-                          <span className="tabular-nums font-mono">
+                          <span className="inline-flex items-center gap-1 font-mono text-slate-400 tabular-nums">
+                            <Clock className="h-3 w-3 text-slate-400" />
                             {formatDateTime(n.createdAt)}
                           </span>
                         </div>
