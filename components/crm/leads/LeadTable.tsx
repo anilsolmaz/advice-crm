@@ -37,6 +37,15 @@ const LEAD_STATUSES: LeadStatus[] = [
   "REGISTERED",
 ];
 
+const OUTCOME_LABELS_TR: Record<string, string> = {
+  REACHED: "Ulaşıldı",
+  BUSY: "Meşgul",
+  UNREACHABLE: "Ulaşılamadı",
+  INTERESTED: "İlgileniyor",
+  UNINTERESTED: "İlgilenmiyor",
+  REGISTERED: "Kayıt Oldu",
+};
+
 type CallTab = "ALL" | "TODAY" | "OVERDUE" | "NEVER_CALLED" | "CALLED";
 
 interface Props {
@@ -383,7 +392,7 @@ export function LeadTable({
             <tr className="border-b border-slate-100 bg-slate-50">
               {[
                 "Ad Soyad & Şehir",
-                "İletişim & WhatsApp",
+                "İletişim",
                 "Program & Sponsor",
                 "Takip (Follow-Up) & Çağrı",
                 "Durum",
@@ -438,23 +447,22 @@ export function LeadTable({
                     </div>
                   </td>
 
-                  {/* Contact & WhatsApp */}
+                  {/* Contact */}
                   <td className="px-4 py-3">
-                    <div className="text-xs font-medium text-slate-700">
-                      {lead.phone}
+                    <div className="text-xs font-semibold text-slate-800">
+                      {lead.phone && lead.phone !== "Belirtilmedi" ? (
+                        lead.phone
+                      ) : (
+                        <span className="text-slate-400 font-normal">Telefon yok</span>
+                      )}
                     </div>
                     <div className="text-[11px] text-slate-400 truncate max-w-[160px]">
-                      {lead.email}
+                      {lead.email && !lead.email.includes("@advice.internal") ? (
+                        lead.email
+                      ) : (
+                        <span className="text-slate-400 font-normal">E-posta yok</span>
+                      )}
                     </div>
-                    <a
-                      href={getWhatsAppUrl(lead.phone, lead.fullName)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                    >
-                      <MessageCircle className="h-3 w-3" />
-                      WhatsApp Yaz
-                    </a>
                   </td>
 
                   {/* Program & Sponsor */}
@@ -474,13 +482,14 @@ export function LeadTable({
                     </div>
                   </td>
 
-                  {/* Follow-Up & Call Tracking */}
+                  {/* Follow-Up & Call Tracking (Compact 2 Lines) */}
                   <td className="px-4 py-3">
-                    {lead.followUpAt ? (
-                      <div className="flex items-center gap-1.5">
+                    {/* Line 1: Date Badge + Quick Ertele Buttons */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {lead.followUpAt ? (
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold",
+                            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold",
                             overdue
                               ? "bg-red-600 text-white"
                               : today
@@ -493,13 +502,30 @@ export function LeadTable({
                           {overdue && " (GECİKTİ)"}
                           {today && " (BUGÜN)"}
                         </span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-400">
-                        Takip tarihi yok
-                      </span>
-                    )}
+                      ) : (
+                        <span className="text-xs text-slate-400">
+                          Takip tarihi yok
+                        </span>
+                      )}
 
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400">Ertele:</span>
+                        {[1, 3, 7].map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => handlePostpone(lead.id, d)}
+                            disabled={isPending}
+                            className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-[#0f172a] hover:text-white hover:border-[#0f172a] transition-colors"
+                            title={`Takip tarihini ${d} gün ertele`}
+                          >
+                            +{d}G
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Line 2: Arama Sayısı & Son Türkçe Çağrı Durumu */}
                     <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
                       <span>
                         Arama:{" "}
@@ -508,27 +534,10 @@ export function LeadTable({
                         </strong>
                       </span>
                       {lead.lastCallOutcome && (
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold">
-                          Son: {lead.lastCallOutcome}
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
+                          Son: {OUTCOME_LABELS_TR[lead.lastCallOutcome] || lead.lastCallOutcome}
                         </span>
                       )}
-                    </div>
-
-                    {/* 1-Click Postpone Follow-Up Buttons */}
-                    <div className="mt-1.5 flex items-center gap-1">
-                      <span className="text-[10px] text-slate-400">Ertele:</span>
-                      {[1, 3, 7].map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => handlePostpone(lead.id, d)}
-                          disabled={isPending}
-                          className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-100"
-                          title={`Takip tarihini ${d} gün ertele`}
-                        >
-                          +{d}G
-                        </button>
-                      ))}
                     </div>
                   </td>
 
@@ -555,33 +564,35 @@ export function LeadTable({
                     {lead.advisorName || "Atanmamış"}
                   </td>
 
-                  {/* Actions */}
+                  {/* Actions (WhatsApp & Kesin Kayıt) */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOpen(lead)}
-                        className="rounded-lg bg-[#0f172a] px-2.5 py-1.5 text-xs font-bold text-white hover:bg-[#1e3a8a] transition-colors"
-                      >
-                        Düzenle / Çağrı Gir
-                      </button>
+                      {lead.phone && lead.phone !== "Belirtilmedi" ? (
+                        <a
+                          href={getWhatsAppUrl(lead.phone, lead.fullName)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 px-2.5 py-1.5 text-xs font-bold transition-colors"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          WhatsApp Yaz
+                        </a>
+                      ) : (
+                        <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-400">
+                          No Yok
+                        </span>
+                      )}
+
                       {lead.status !== "REGISTERED" && (
                         <button
                           type="button"
                           onClick={() => handleConvert(lead.id)}
                           disabled={isPending}
-                          className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                          className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-2xs"
                         >
                           Kesin Kayıt
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleOpen(lead)}
-                        className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-100"
-                      >
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </button>
                     </div>
                   </td>
                 </tr>

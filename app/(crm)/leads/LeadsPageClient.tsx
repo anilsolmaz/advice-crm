@@ -45,13 +45,6 @@ export default function LeadsPageClient({
             Toplam {initialLeads.length} aday · Günlük arama planı, gecikmiş takipler ve hızlı WhatsApp/çağrı aksiyonları
           </p>
         </div>
-        <a
-          href="/leads/new"
-          className="flex items-center gap-1.5 rounded-xl bg-[#0f172a] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#1e3a8a] transition-colors"
-        >
-          <Plus className="h-4 w-4 text-sky-400" />
-          Yeni Lead Ekle
-        </a>
       </div>
 
       {/* Summary Metric Cards */}

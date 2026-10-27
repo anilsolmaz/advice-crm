@@ -95,14 +95,6 @@ export default async function ProgramLeadsPage({ params }: Props) {
             Reklamlar, formlar ve doğrudan başvurulardan gelen potansiyel öğrenci adayları.
           </p>
         </div>
-
-        <Link
-          href={`/leads/new?program=${programEnum}`}
-          className="flex items-center gap-2 rounded-xl bg-[#0f172a] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1e3a8a] transition-colors"
-        >
-          <Plus className="h-4 w-4 text-sky-400" />
-          Yeni Aday Ekle
-        </Link>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

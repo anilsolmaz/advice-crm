@@ -15,7 +15,7 @@ import {
   AtSign,
   PhoneCall,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { logoutAction } from "@/lib/auth/actions";
 import type { AuthUser } from "@/lib/auth/session";
 import { ROLE_LABELS } from "@/lib/auth/roles";
@@ -23,6 +23,7 @@ import {
   PendingApprovalsDrawer,
   type StagedApprovalItem,
 } from "@/components/crm/approvals/PendingApprovalsDrawer";
+import { NewLeadModal } from "@/components/crm/leads/NewLeadModal";
 
 const PATH_LABELS: Record<string, string> = {
   dashboard: "Genel Bakış",
@@ -80,6 +81,17 @@ export default function Header({
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [isApprovalsOpen, setIsApprovalsOpen] = useState(false);
+  const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
+
+  useEffect(() => {
+    function handleOpenEvent() {
+      setIsNewLeadOpen(true);
+    }
+    window.addEventListener("open-new-lead-modal", handleOpenEvent);
+    return () => {
+      window.removeEventListener("open-new-lead-modal", handleOpenEvent);
+    };
+  }, []);
 
   const unreadCount =
     notifications.filter((n) => !n.isRead).length + pendingApprovals.length;
@@ -111,13 +123,14 @@ export default function Header({
         {/* Right actions */}
         <div className="flex items-center gap-3">
           {user.role !== "ACCOUNTING" && (
-            <Link
-              href="/leads/new"
+            <button
+              type="button"
+              onClick={() => setIsNewLeadOpen(true)}
               className="flex items-center gap-1.5 rounded-lg bg-[#0f172a] px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#1e3a8a] transition-colors"
             >
               <Plus className="h-4 w-4 text-sky-400" />
               Yeni Lead / Kayıt
-            </Link>
+            </button>
           )}
 
           {/* Notification & Alerts Bell */}
@@ -305,6 +318,13 @@ export default function Header({
         onClose={() => setIsApprovalsOpen(false)}
         approvals={pendingApprovals}
       />
+
+      {isNewLeadOpen && (
+        <NewLeadModal
+          onClose={() => setIsNewLeadOpen(false)}
+          onSuccess={() => setIsNewLeadOpen(false)}
+        />
+      )}
     </>
   );
 }
