@@ -13,9 +13,18 @@ export default async function CRMLayout({
 }) {
   const user = await requireStaff();
 
-  const [pendingApprovalsRaw, notificationsRaw] = await Promise.all([
+  const isAdvisor = user.role === "ADVISOR";
+  const approvalWhere = {
+    status: "PENDING" as const,
+    ...(isAdvisor ? { student: { advisorId: user.id } } : {}),
+  };
+
+  const [pendingApprovalsCount, pendingApprovalsRaw, notificationsRaw] = await Promise.all([
+    prisma.pendingApproval.count({
+      where: approvalWhere,
+    }),
     prisma.pendingApproval.findMany({
-      where: { status: "PENDING" },
+      where: approvalWhere,
       include: {
         student: {
           include: {
@@ -62,6 +71,7 @@ export default async function CRMLayout({
         userRole={user.role}
         allowedPrograms={user.advisorProfile?.allowedPrograms}
         canManageAccounting={user.advisorProfile?.canManageAccounting}
+        pendingApprovalsCount={pendingApprovalsCount}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">

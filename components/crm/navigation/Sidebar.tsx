@@ -91,12 +91,14 @@ interface SidebarProps {
   userRole: Role;
   allowedPrograms?: Program[];
   canManageAccounting?: boolean;
+  pendingApprovalsCount?: number;
 }
 
 export default function Sidebar({
   userRole,
   allowedPrograms,
   canManageAccounting = false,
+  pendingApprovalsCount = 0,
 }: SidebarProps) {
   const pathname = usePathname();
 
@@ -255,8 +257,15 @@ export default function Sidebar({
                 <Bell className="h-4 w-4 text-amber-400" />
                 Onay Merkezi
               </div>
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                Kuyruk
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors",
+                  pendingApprovalsCount > 0
+                    ? "bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30"
+                    : "bg-slate-800 text-slate-400",
+                )}
+              >
+                {pendingApprovalsCount > 99 ? "99+" : pendingApprovalsCount}
               </span>
             </Link>
 
