@@ -103,62 +103,59 @@ export function StudentModal({
           />
         </div>
 
-        {/* ── Body: vertical tabs ─────────────────────────────────── */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Tab list */}
-          <nav className="flex w-44 flex-shrink-0 flex-col border-r border-gray-100 bg-gray-50 py-4">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  "px-4 py-2.5 text-left text-sm font-medium transition-colors",
-                  activeTab === tab.key
-                    ? "border-r-2 border-blue-600 bg-white text-blue-700"
-                    : "text-gray-600 hover:bg-white hover:text-gray-900",
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+        {/* ── 2. ALT SEKME BARI (Horizontal Tabs Below Profile Card) ── */}
+        <div className="flex flex-wrap border-b border-slate-200 bg-slate-50/80 px-6">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "border-b-2 px-4 py-3 text-xs font-bold transition-colors",
+                activeTab === tab.key
+                  ? "border-[#0f172a] bg-white text-[#0f172a]"
+                  : "border-transparent text-slate-500 hover:text-slate-900",
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          {/* Tab panel */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {activeTab === "personal" && (
-              <PersonalTab student={student} />
-            )}
-            {activeTab === "emergency" && (
-              <EmergencyContactTab profile={student.profile} studentId={student.id} />
-            )}
-            {activeTab === "education" && (
-              <EducationWorkTab
-                profile={student.profile}
-                academyDetail={academyDetail}
-                studentId={student.id}
-              />
-            )}
-            {activeTab === "job" && (
-              <JobPlacementTab
-                watDetail={watDetail}
-                academyDetail={academyDetail}
-                languageDetail={languageDetail}
-                summerCampDetail={summerCampDetail}
-                visaDetail={visaDetail}
-                studentId={student.id}
-                program={student.program}
-              />
-            )}
-            {activeTab === "payments" && (
-              <PaymentsTab payments={payments} studentId={student.id} />
-            )}
-            {activeTab === "documents" && (
-              <DocumentsTab documents={documents} studentId={student.id} />
-            )}
-            {activeTab === "history" && (
-              <HistoryTab notes={notes} studentId={student.id} />
-            )}
-          </div>
+        {/* ── 3. SEKME İÇERİĞİ ──────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {activeTab === "personal" && (
+            <PersonalTab student={student} />
+          )}
+          {activeTab === "emergency" && (
+            <EmergencyContactTab profile={student.profile} studentId={student.id} />
+          )}
+          {activeTab === "education" && (
+            <EducationWorkTab
+              profile={student.profile}
+              academyDetail={academyDetail}
+              studentId={student.id}
+            />
+          )}
+          {activeTab === "job" && (
+            <JobPlacementTab
+              watDetail={watDetail}
+              academyDetail={academyDetail}
+              languageDetail={languageDetail}
+              summerCampDetail={summerCampDetail}
+              visaDetail={visaDetail}
+              studentId={student.id}
+              program={student.program}
+            />
+          )}
+          {activeTab === "payments" && (
+            <PaymentsTab payments={payments} studentId={student.id} />
+          )}
+          {activeTab === "documents" && (
+            <DocumentsTab documents={documents} studentId={student.id} />
+          )}
+          {activeTab === "history" && (
+            <HistoryTab notes={notes} studentId={student.id} student={student} />
+          )}
         </div>
       </div>
     </div>

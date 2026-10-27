@@ -106,7 +106,7 @@ export function StudentDetailView({
     | "documents"
     | "notes"
     | "logs"
-  >("program");
+  >("notes");
   const [isPending, startTransition] = useTransition();
   const [noteText, setNoteText] = useState("");
   const [noteTitle, setNoteTitle] = useState("Görüşme Notu");
@@ -625,6 +625,19 @@ export function StudentDetailView({
       {/* ── Tab Navigation ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap border-b border-slate-200">
         <button
+          onClick={() => setActiveTab("notes")}
+          className={cn(
+            "flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors",
+            activeTab === "notes"
+              ? "border-[#0f172a] text-[#0f172a]"
+              : "border-transparent text-slate-500 hover:text-slate-900",
+          )}
+        >
+          <MessageSquare className="h-4 w-4" />
+          Notlar &amp; İletişim ({notes?.length || 0})
+        </button>
+
+        <button
           onClick={() => setActiveTab("program")}
           className={cn(
             "flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-bold transition-colors",
@@ -634,7 +647,7 @@ export function StudentDetailView({
           )}
         >
           <Plane className="h-4 w-4" />
-          İletişim, Notlar &amp; Operasyon ({notes?.length || 0})
+          Program Operasyonu &amp; Aşamalar
         </button>
 
         <button
@@ -703,96 +716,26 @@ export function StudentDetailView({
         </button>
       </div>
 
-      {/* ── 1. PROGRAM & NOTES TAB (Primary Workspace) ──────────────────── */}
-      {activeTab === "program" && (
-        <div className="space-y-6">
-          {/* Minimal Scrollable Advisor Notes & Communication Cards (Always on 1st Screen) */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+      {/* ── 1. NOTLAR & İLETİŞİM SEKME İÇERİĞİ (Sol: Notlar, Sağ: Yeni Not & İletişim) ── */}
+      {activeTab === "notes" && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* SOL KOLON (7/12 — Yarıdan Geniş): SADECE Yukarıdan Aşağıya Not Kartları */}
+          <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-[#1e3a8a]" />
-                  Görüşme Detayı, Danışman Notları &amp; Takım İçi (@mention)
+                <h3 className="text-sm font-bold text-[#0f172a]">
+                  Görüşme Detayı &amp; Danışman Notları
                 </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Öğrenciyle yapılan tüm görüşmeler, e-postalar ve ekip içi notlar (son eklenen en üstte)
+                <p className="text-[11px] text-slate-500">
+                  Son eklenen notlar en üstte yer alır · Dikey kaydırılabilir
                 </p>
               </div>
-              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                {notes?.length || 0} Kayıt · Son eklenen üstte
+              <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                {notes?.length || 0} Kayıt
               </span>
             </div>
 
-            {/* Minimal New Note Input Bar */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-600">
-                    Not Başlığı / Kaynak:
-                  </span>
-                  <select
-                    value={noteTitle}
-                    onChange={(e) => setNoteTitle(e.target.value)}
-                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 focus:border-[#0f172a] focus:outline-none"
-                  >
-                    <option value="Görüşme Notu">Görüşme Notu</option>
-                    <option value="Vize & Evrak Notu">Vize &amp; Evrak Notu</option>
-                    <option value="WhatsApp Görüşmesi">WhatsApp Görüşmesi</option>
-                    <option value="İş / Okul Yerleştirme">İş / Okul Yerleştirme</option>
-                    <option value="Muhasebe & Taksit Notu">Muhasebe &amp; Taksit Notu</option>
-                    <option value="Özel Not">Özel Not</option>
-                  </select>
-                </div>
-
-                {staffList.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1">
-                    <span className="text-[10px] font-bold text-slate-400 mr-1">
-                      Etiketle:
-                    </span>
-                    {staffList.map((st) => {
-                      const firstName = st.fullName.split(" ")[0];
-                      return (
-                        <button
-                          key={st.id}
-                          type="button"
-                          onClick={() =>
-                            setNoteText((prev) =>
-                              `${prev} @${firstName} `.trimStart(),
-                            )
-                          }
-                          className="rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-[#1e3a8a] hover:bg-blue-100"
-                        >
-                          @{firstName}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <form
-                action={(fd) => {
-                  noteAction(fd);
-                  setNoteText("");
-                }}
-                className="flex items-start gap-2"
-              >
-                <input type="hidden" name="noteTitle" value={noteTitle} />
-                <textarea
-                  name="note"
-                  rows={2}
-                  required
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Öğrenciyle ilgili görüşme, vize, iş teklifi veya ödeme notunu yazın (@İsim ile ekip arkadaşınızı etiketleyebilirsiniz)…"
-                  className="flex-1 rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0f172a] focus:outline-none"
-                />
-                <NoteSubmitButton />
-              </form>
-            </div>
-
-            {/* Scrollable Minimal Note Cards (Newest First) */}
-            <div className="max-h-60 overflow-y-auto space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-2.5">
+            <div className="max-h-[480px] overflow-y-auto space-y-2.5 pr-1">
               {notes && notes.length > 0 ? (
                 notes.map((n: any) => {
                   const raw = String(n.note || "");
@@ -844,12 +787,150 @@ export function StudentDetailView({
                   );
                 })
               ) : (
-                <div className="py-6 text-center text-xs text-slate-400">
-                  Henüz kayıtlı görüşme veya danışman notu bulunmuyor.
+                <div className="flex h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center text-slate-400">
+                  <FileText className="h-6 w-6 mb-1.5 text-slate-300" />
+                  <p className="text-xs font-medium">
+                    Henüz kayıtlı görüşme veya danışman notu bulunmuyor.
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Sağ taraftaki panelden yeni not ekleyebilirsiniz.
+                  </p>
                 </div>
               )}
             </div>
           </div>
+
+          {/* SAĞ KOLON (5/12): Hızlı İletişim Butonları + Yeni Not Girme */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* 1. Hızlı İletişim Kanalları Kartı */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Hızlı İletişim Kanalları
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {student.user.phone ? (
+                  <>
+                    <a
+                      href={`tel:${student.user.phone}`}
+                      className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#0f172a] py-2.5 px-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors"
+                    >
+                      <Phone className="h-4 w-4 text-amber-400" />
+                      <span>Telefon Aç</span>
+                    </a>
+                    <a
+                      href={`https://wa.me/90${student.user.phone.replace(/\D/g, "").replace(/^0/, "")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex flex-col items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2.5 px-2 text-xs font-bold text-white hover:bg-emerald-500 transition-colors"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>WhatsApp</span>
+                    </a>
+                  </>
+                ) : (
+                  <div className="col-span-2 flex items-center justify-center rounded-xl border border-dashed border-slate-200 py-2.5 text-[11px] text-slate-400">
+                    Telefon numarası girilmedi
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(true)}
+                  className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#1e3a8a] py-2.5 px-2 text-xs font-bold text-white hover:bg-blue-800 transition-colors"
+                >
+                  <Mail className="h-4 w-4 text-sky-300" />
+                  <span>Mail Gönder</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Yeni Not & @Mention Ekleme Kartı */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <h4 className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
+                  <Plus className="h-4 w-4 text-[#1e3a8a]" />
+                  Yeni Not / Görüşme Detayı Ekle
+                </h4>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-600">
+                  Not Başlığı / Kaynak
+                </label>
+                <select
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#0f172a] focus:outline-none"
+                >
+                  <option value="Görüşme Notu">Görüşme Notu</option>
+                  <option value="Vize & Evrak Notu">Vize &amp; Evrak Notu</option>
+                  <option value="WhatsApp Görüşmesi">WhatsApp Görüşmesi</option>
+                  <option value="İş / Okul Yerleştirme">İş / Okul Yerleştirme</option>
+                  <option value="Muhasebe & Taksit Notu">Muhasebe &amp; Taksit Notu</option>
+                  <option value="Özel Not">Özel Not</option>
+                </select>
+              </div>
+
+              {staffList.length > 0 && (
+                <div className="space-y-1">
+                  <span className="block text-[10px] font-bold text-slate-400">
+                    Ekip Arkadaşını Etiketle (@mention):
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {staffList.map((st) => {
+                      const firstName = st.fullName.split(" ")[0];
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() =>
+                            setNoteText((prev) =>
+                              `${prev} @${firstName} `.trimStart(),
+                            )
+                          }
+                          className="rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-[#1e3a8a] hover:bg-blue-100"
+                        >
+                          @{firstName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <form
+                action={(fd) => {
+                  noteAction(fd);
+                  setNoteText("");
+                }}
+                className="space-y-2.5"
+              >
+                <input type="hidden" name="noteTitle" value={noteTitle} />
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-slate-600">
+                    Not İçeriği
+                  </label>
+                  <textarea
+                    name="note"
+                    rows={4}
+                    required
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="Öğrenciyle ilgili görüşme, vize, iş teklifi veya ödeme notunu yazın…"
+                    className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0f172a] focus:outline-none"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <NoteSubmitButton />
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2. PROGRAM OPERASYONU SEKME İÇERİĞİ ─────────────────────────── */}
+      {activeTab === "program" && (
+        <div className="space-y-6">
           {student.program === "WORK_AND_TRAVEL" && (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -2334,93 +2415,6 @@ export function StudentDetailView({
               Henüz evrak yüklenmemiş.
             </p>
           )}
-        </div>
-      )}
-
-      {/* ── 6. TEAM CONVERSATION (@MENTION) TAB (§9) ─────────────────────── */}
-      {activeTab === "notes" && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
-          <div>
-            <h3 className="text-base font-bold text-[#0f172a] flex items-center gap-2">
-              <AtSign className="h-4 w-4 text-blue-600" />
-              Takım İçi Conversation (@mention) &amp; Danışman Notları
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Ekip arkadaşlarınızı etiketlemek için aşağıdan ismine tıklayın veya{" "}
-              <code>@İsim</code> yazın. Etiketlenen kişiye anında bildirim gider.
-            </p>
-          </div>
-
-          {/* Quick @mention pills */}
-          {staffList.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-bold text-slate-400">
-                Hızlı Etiketle:
-              </span>
-              {staffList.map((st) => {
-                const firstName = st.fullName.split(" ")[0];
-                return (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() =>
-                      setNoteText((prev) => `${prev} @${firstName} `.trimStart())
-                    }
-                    className="rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-bold text-[#1e3a8a] hover:bg-blue-100"
-                  >
-                    @{firstName} ({st.fullName})
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* New note form */}
-          <form
-            action={(fd) => {
-              noteAction(fd);
-              setNoteText("");
-            }}
-            className="space-y-3"
-          >
-            <textarea
-              name="note"
-              rows={3}
-              required
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Örn: @Recep öğrencinin DS-2019 belgesi geldi, @Selim konaklama komisyonunu kontrol edebilir misin?"
-              className="w-full rounded-xl border border-slate-200 p-3 text-xs sm:text-sm text-slate-800 focus:border-[#0f172a] focus:outline-none"
-            />
-            <div className="flex justify-end">
-              <NoteSubmitButton />
-            </div>
-          </form>
-
-          {/* Notes Timeline */}
-          <div className="divide-y divide-slate-100">
-            {notes && notes.length > 0 ? (
-              notes.map((n: any) => (
-                <div key={n.id} className="py-4 space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#0f172a]">
-                      {n.author.fullName}
-                    </span>
-                    <span className="text-slate-400">
-                      {formatDateTime(n.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                    {n.note}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-slate-400 text-center py-6">
-                Kayıtlı mesaj bulunamadı.
-              </p>
-            )}
-          </div>
         </div>
       )}
 

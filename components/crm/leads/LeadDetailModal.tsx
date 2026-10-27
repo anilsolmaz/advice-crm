@@ -295,60 +295,67 @@ export function LeadDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
       <div className="flex h-full max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-        {/* ── Modal Header & Quick Communication Cockpit ────────────── */}
-        <div className="border-b border-slate-800 bg-[#0f172a] px-5 py-4 text-white">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1e3a8a] text-sky-300 text-lg font-black border border-sky-400/30">
+        {/* ── 1. ÜST PROFİL KARTI (Top Profile Card) ────────────────── */}
+        <div className="border-b border-slate-200 bg-white p-5">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-center">
+            {/* Avatar & Name */}
+            <div className="lg:col-span-4 flex items-center gap-3.5 lg:border-r border-slate-100 lg:pr-4">
+              <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-[#0f172a] text-white text-lg font-bold shadow-xs">
                 {lead.fullName.charAt(0).toUpperCase()}
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">{lead.fullName}</h2>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <LeadStatusBadge status={lead.status} />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-bold text-slate-900 truncate">
+                  {lead.fullName}
+                </h2>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <ProgramBadge program={lead.program as Program} showIcon />
-                  <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-                    Arama: {lead.callCount ?? 0} kez
-                  </span>
-                  <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-sky-300">
-                    Kaynak: {LEAD_SOURCE_LABELS[lead.source] || lead.source}
-                  </span>
+                  <LeadStatusBadge status={lead.status} />
                 </div>
               </div>
             </div>
 
-            {/* Quick Communication Buttons (Always visible on top) */}
-            <div className="flex flex-wrap items-center gap-2">
-              <a
-                href={`tel:${lead.phone}`}
-                className="flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 border border-slate-700 transition-colors"
-              >
-                <PhoneCall className="h-3.5 w-3.5 text-amber-400" />
-                Telefon Aç ({lead.phone})
-              </a>
-              <a
-                href={`https://wa.me/90${cleanWaPhone}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition-colors"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                WhatsApp&apos;tan Ulaş
-              </a>
-              <button
-                type="button"
-                onClick={() => setShowEmailModal(true)}
-                className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 border border-sky-400/30 transition-colors"
-              >
-                <Mail className="h-3.5 w-3.5 text-sky-300" />
-                Mail Gönder
-              </button>
+            {/* Contact Info */}
+            <div className="lg:col-span-3 space-y-1 text-xs text-slate-600 lg:border-r border-slate-100 lg:px-4">
+              <p className="font-semibold text-slate-900">{lead.phone}</p>
+              <p className="truncate text-slate-500">{lead.email}</p>
+              <p className="text-[11px] text-slate-400">
+                Şehir: <strong className="text-slate-600">{lead.city || "Belirtilmedi"}</strong>
+              </p>
+            </div>
+
+            {/* Advisor & Source */}
+            <div className="lg:col-span-3 space-y-1 text-xs text-slate-600 lg:px-4">
+              <p>
+                Danışman:{" "}
+                <strong className="text-[#1e3a8a]">
+                  {lead.advisorName || "Atanmamış"}
+                </strong>
+              </p>
+              <p>
+                Kaynak:{" "}
+                <strong className="text-slate-800">
+                  {LEAD_SOURCE_LABELS[lead.source] || lead.source}
+                </strong>
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Takip:{" "}
+                <strong className="text-slate-700">
+                  {lead.followUpAt
+                    ? new Date(lead.followUpAt).toLocaleDateString("tr-TR")
+                    : "Planlanmadı"}
+                </strong>{" "}
+                · Arama: {lead.callCount ?? 0}
+              </p>
+            </div>
+
+            {/* Top Right Actions (Convert & Close) */}
+            <div className="lg:col-span-2 flex items-center justify-end gap-2">
               {lead.status !== "REGISTERED" && (
                 <button
                   type="button"
                   onClick={handleConvert}
                   disabled={isPending}
-                  className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white hover:bg-sky-500 disabled:opacity-50 transition-colors"
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
                   Kesin Kayıt
@@ -357,43 +364,16 @@ export function LeadDetailModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white"
+                className="rounded-xl border border-slate-200 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
           </div>
-
-          {/* Summary Info Strip */}
-          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-slate-800/90 pt-2.5 text-[11px] text-slate-300">
-            <span>
-              <strong className="text-slate-400">E-Posta:</strong> {lead.email}
-            </span>
-            <span>
-              <strong className="text-slate-400">Şehir:</strong>{" "}
-              {lead.city || "Belirtilmedi"}
-            </span>
-            <span>
-              <strong className="text-slate-400">Danışman:</strong>{" "}
-              {lead.advisorName || "Atanmamış"}
-            </span>
-            {lead.sponsor && (
-              <span>
-                <strong className="text-slate-400">Sponsor:</strong>{" "}
-                {lead.sponsor}
-              </span>
-            )}
-            <span>
-              <strong className="text-slate-400">Takip Tarihi:</strong>{" "}
-              {lead.followUpAt
-                ? new Date(lead.followUpAt).toLocaleDateString("tr-TR")
-                : "Planlanmadı"}
-            </span>
-          </div>
         </div>
 
-        {/* ── Tab Navigation Bar ────────────────────────────────────── */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6">
+        {/* ── 2. ALT SEKME BARI (Tabs Below Profile Card) ───────────── */}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-6">
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -404,8 +384,8 @@ export function LeadDetailModal({
                   : "border-transparent text-slate-500 hover:text-slate-800"
               }`}
             >
-              <PhoneCall className="h-3.5 w-3.5 text-[#1e3a8a]" />
-              İletişim, Çağrı &amp; Notlar ({parsedNoteCards.length})
+              <FileText className="h-3.5 w-3.5 text-[#1e3a8a]" />
+              Notlar &amp; İletişim ({parsedNoteCards.length})
             </button>
             <button
               type="button"
@@ -417,7 +397,7 @@ export function LeadDetailModal({
               }`}
             >
               <User className="h-3.5 w-3.5 text-slate-600" />
-              Aday Profil &amp; Kayıt Bilgileri
+              Profil &amp; Kayıt Bilgilerini Düzenle
             </button>
           </div>
 
@@ -428,85 +408,34 @@ export function LeadDetailModal({
           )}
         </div>
 
-        {/* ── Body ──────────────────────────────────────────────────── */}
+        {/* ── 3. SEKME İÇERİĞİ ──────────────────────────────────────── */}
         {activeTab === "communication" ? (
-          <div className="grid flex-1 grid-cols-1 lg:grid-cols-12 overflow-y-auto divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
-            {/* LEFT 7 COLS: Note Cards & Quick Note Entry (Primary Workspace) */}
-            <div className="lg:col-span-7 p-5 space-y-4 overflow-y-auto">
-              <div className="flex items-center justify-between">
+          <div className="grid flex-1 grid-cols-1 lg:grid-cols-12 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+            {/* SOL KOLON (7/12 — Yarıdan Geniş): SADECE Yukarıdan Aşağıya Not Kartları */}
+            <div className="lg:col-span-7 flex flex-col overflow-hidden bg-slate-50/40 p-5">
+              <div className="mb-3 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-[#0f172a]">
                     Görüşme Detayı &amp; Notlar
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Tüm arama kayıtları, e-postalar ve danışman notları (son eklenen en üstte)
+                    Son eklenen notlar en üstte yer alır · Dikey kaydırılabilir
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  {noteSavedToast && (
-                    <span className="text-xs font-bold text-emerald-600">
-                      ✓ Not eklendi
-                    </span>
-                  )}
-                  <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                    {parsedNoteCards.length} Kayıt
-                  </span>
-                </div>
+                <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                  {parsedNoteCards.length} Kayıt
+                </span>
               </div>
 
-              {/* Minimal New Note Input Bar */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-slate-600">
-                      Not Başlığı / Kaynak:
-                    </span>
-                    <select
-                      value={noteTitle}
-                      onChange={(e) => setNoteTitle(e.target.value)}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 focus:border-[#0f172a] focus:outline-none"
-                    >
-                      <option value="Görüşme Notu">Görüşme Notu</option>
-                      <option value="Aday Profil & Bütçe">
-                        Aday Profil &amp; Bütçe
-                      </option>
-                      <option value="WhatsApp Görüşmesi">
-                        WhatsApp Görüşmesi
-                      </option>
-                      <option value="Vize & Evrak Notu">
-                        Vize &amp; Evrak Notu
-                      </option>
-                      <option value="Özel Not">Özel Not</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <textarea
-                    rows={2}
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Adayın İngilizce seviyesi, üniversitesi, bütçesi veya görüşme detayını yazın…"
-                    className="flex-1 rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0f172a] focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleQuickNoteAdd}
-                    disabled={isPending || !newNote.trim()}
-                    className="flex shrink-0 items-center gap-1 rounded-lg bg-[#0f172a] px-3.5 py-2.5 text-xs font-bold text-white hover:bg-[#1e3a8a] disabled:opacity-40 transition-colors"
-                  >
-                    <Plus className="h-3.5 w-3.5 text-sky-400" />
-                    Not Ekle
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable Minimal Note Cards (Newest First) */}
-              <div className="max-h-[360px] overflow-y-auto space-y-2.5 pr-1">
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                 {parsedNoteCards.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-10 text-center text-slate-400">
+                  <div className="flex h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-slate-400">
                     <FileText className="h-6 w-6 mb-1.5 text-slate-300" />
                     <p className="text-xs font-medium">
                       Henüz kayıtlı görüşme detayı veya not bulunmuyor.
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Sağ taraftaki panelden yeni not veya arama sonucu ekleyebilirsiniz.
                     </p>
                   </div>
                 ) : (
@@ -543,18 +472,113 @@ export function LeadDetailModal({
               </div>
             </div>
 
-            {/* RIGHT 5 COLS: Call Outcome Logger & Quick Follow-Up Postpone */}
-            <div className="lg:col-span-5 bg-slate-50/70 p-5 space-y-4 overflow-y-auto">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3.5">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <PhoneCall className="h-4 w-4 text-[#1e3a8a]" />
-                    <h3 className="text-sm font-bold text-[#0f172a]">
-                      Arama Sonucu &amp; Follow-Up Gir
-                    </h3>
+            {/* SAĞ KOLON (5/12): Yeni Not Girme + Hızlı İletişim Butonları + Çağrı/Takip */}
+            <div className="lg:col-span-5 overflow-y-auto bg-white p-5 space-y-4">
+              {/* 1. Hızlı İletişim Butonları */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Hızlı İletişim Kanalları
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <a
+                    href={`tel:${lead.phone}`}
+                    className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#0f172a] py-2.5 px-2 text-xs font-bold text-white hover:bg-slate-800 transition-colors"
+                  >
+                    <PhoneCall className="h-4 w-4 text-amber-400" />
+                    <span>Telefon Aç</span>
+                  </a>
+                  <a
+                    href={`https://wa.me/90${cleanWaPhone}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex flex-col items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2.5 px-2 text-xs font-bold text-white hover:bg-emerald-500 transition-colors"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span>WhatsApp</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailModal(true)}
+                    className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#1e3a8a] py-2.5 px-2 text-xs font-bold text-white hover:bg-blue-800 transition-colors"
+                  >
+                    <Mail className="h-4 w-4 text-sky-300" />
+                    <span>Mail Gönder</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Yeni Not Girme Kartı */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
+                    <Plus className="h-4 w-4 text-[#1e3a8a]" />
+                    Yeni Not Ekle
+                  </h4>
+                  {noteSavedToast && (
+                    <span className="text-[11px] font-bold text-emerald-600">
+                      ✓ Eklendi
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-slate-600">
+                    Not Başlığı / Kaynak
+                  </label>
+                  <select
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#0f172a] focus:outline-none"
+                  >
+                    <option value="Görüşme Notu">Görüşme Notu</option>
+                    <option value="Aday Profil & Bütçe">
+                      Aday Profil &amp; Bütçe
+                    </option>
+                    <option value="WhatsApp Görüşmesi">
+                      WhatsApp Görüşmesi
+                    </option>
+                    <option value="Vize & Evrak Notu">
+                      Vize &amp; Evrak Notu
+                    </option>
+                    <option value="Özel Not">Özel Not</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-slate-600">
+                    Not İçeriği
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="Adayın İngilizce seviyesi, üniversitesi, bütçesi veya görüşme detayını yazın…"
+                    className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0f172a] focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleQuickNoteAdd}
+                  disabled={isPending || !newNote.trim()}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#0f172a] py-2.5 text-xs font-bold text-white hover:bg-[#1e3a8a] disabled:opacity-40 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5 text-sky-400" />
+                  Notu Kaydet
+                </button>
+              </div>
+
+              {/* 3. Arama Sonucu & Follow-Up Planlama Kartı */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <PhoneCall className="h-3.5 w-3.5 text-[#1e3a8a]" />
+                    <h4 className="text-xs font-bold text-[#0f172a]">
+                      Arama Sonucu &amp; Takip (Follow-Up)
+                    </h4>
                   </div>
                   {callSaved && (
-                    <span className="text-xs font-bold text-emerald-600">
+                    <span className="text-[11px] font-bold text-emerald-600">
                       ✓ Kaydedildi
                     </span>
                   )}
@@ -580,126 +604,84 @@ export function LeadDetailModal({
                       }
                     });
                   }}
-                  className="space-y-3"
+                  className="space-y-2.5"
                 >
-                  <div>
-                    <label className="mb-1 block text-xs font-bold text-slate-700">
-                      Arama Sonucu
-                    </label>
-                    <select
-                      name="outcome"
-                      value={callOutcome}
-                      onChange={(e) => {
-                        setCallOutcome(e.target.value);
-                        handleOutcomeSelect(e.target.value);
-                      }}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-900"
-                    >
-                      {CALL_OUTCOMES.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="mb-1 block text-[11px] font-bold text-slate-600">
+                        Arama Sonucu
+                      </label>
+                      <select
+                        name="outcome"
+                        value={callOutcome}
+                        onChange={(e) => {
+                          setCallOutcome(e.target.value);
+                          handleOutcomeSelect(e.target.value);
+                        }}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-900"
+                      >
+                        {CALL_OUTCOMES.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[11px] font-bold text-slate-600">
+                        Sonraki Follow-Up
+                      </label>
+                      <input
+                        type="date"
+                        name="nextFollowUpAt"
+                        value={nextFollowUpDate}
+                        onChange={(e) => setNextFollowUpDate(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-bold text-slate-700">
-                      Önerilen / Sonraki Follow-Up Tarihi
-                    </label>
-                    <input
-                      type="date"
-                      name="nextFollowUpAt"
-                      value={nextFollowUpDate}
-                      onChange={(e) => setNextFollowUpDate(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    name="notes"
+                    value={callNotes}
+                    onChange={(e) => setCallNotes(e.target.value)}
+                    placeholder="Kısa arama özeti (sol listeye otomatik düşer)…"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800"
+                  />
 
-                  <div>
-                    <label className="mb-1 block text-xs font-bold text-slate-700">
-                      Görüşme Özeti
-                    </label>
-                    <textarea
-                      name="notes"
-                      rows={3}
-                      value={callNotes}
-                      onChange={(e) => setCallNotes(e.target.value)}
-                      placeholder="Örn: Öğrenciye fiyat bilgisi verildi, ailesiyle konuşup Cuma günü dönecek…"
-                      className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800"
-                    />
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={isPending}
-                      className="flex items-center gap-1.5 rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-bold text-white hover:bg-[#1e3a8a] disabled:opacity-50"
-                    >
-                      {isPending
-                        ? "Kaydediliyor…"
-                        : "Aramayı Kaydet & Takibi Güncelle"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Quick Follow-Up Postpone Card */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <CalendarClock className="h-4 w-4 text-amber-600" />
-                  <span>Tek Tıkla Follow-Up Ertele</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { d: 1, label: "Yarına Ertele (+1G)" },
-                    { d: 3, label: "+3 Gün Ertele" },
-                    { d: 7, label: "Haftaya Ertele (+7G)" },
-                  ].map((btn) => (
-                    <button
-                      key={btn.d}
-                      type="button"
-                      onClick={() => handlePostpone(btn.d)}
-                      disabled={isPending}
-                      className="rounded-xl border border-slate-200 bg-slate-50 py-2 px-2 text-[11px] font-bold text-slate-700 hover:bg-[#0f172a] hover:text-white transition-colors"
-                    >
-                      {btn.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quick Lead Status Switcher */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">
-                    Hızlı Aday Durumu Değiştir
-                  </span>
                   <button
-                    type="button"
-                    onClick={() => setActiveTab("profile")}
-                    className="text-[11px] font-bold text-[#1e3a8a] hover:underline"
+                    type="submit"
+                    disabled={isPending}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1e3a8a] py-2 text-xs font-bold text-white hover:bg-[#0f172a] disabled:opacity-50"
                   >
-                    Program / Danışman Değiştir →
+                    {isPending
+                      ? "Kaydediliyor…"
+                      : "Aramayı Kaydet & Takibi Güncelle"}
                   </button>
+                </form>
+
+                {/* Quick Follow-Up Postpone Buttons */}
+                <div className="pt-1 border-t border-slate-100">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { d: 1, label: "+1 Gün Ertele" },
+                      { d: 3, label: "+3 Gün Ertele" },
+                      { d: 7, label: "+7 Gün Ertele" },
+                    ].map((btn) => (
+                      <button
+                        key={btn.d}
+                        type="button"
+                        onClick={() => handlePostpone(btn.d)}
+                        disabled={isPending}
+                        className="rounded-lg border border-slate-200 bg-slate-50 py-1.5 px-2 text-[10px] font-bold text-slate-600 hover:bg-[#0f172a] hover:text-white transition-colors"
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <select
-                  defaultValue={lead.status}
-                  onChange={(e) => {
-                    const nextStatus = e.target.value as LeadStatus;
-                    startTransition(() => {
-                      updateLeadStatus(lead.id, nextStatus);
-                    });
-                  }}
-                  disabled={isPending}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900"
-                >
-                  {Object.entries(LEAD_STATUS_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
           </div>
