@@ -15,11 +15,11 @@ export default async function StudentsMasterPage() {
   const canViewAll = user.advisorProfile?.canViewAllLeads ?? true;
 
   const whereClause =
-    user.role === "ADMIN"
+    user.role === "ADMIN" || user.role === "ACCOUNTING"
       ? {}
-      : canViewAll
-      ? { program: { in: allowed } }
-      : { advisorId: user.id, program: { in: allowed } };
+      : canViewAll && allowed.length > 0
+      ? { OR: [{ advisorId: user.id }, { program: { in: allowed } }] }
+      : { advisorId: user.id };
 
   // Fetch all registered students
   const students = await prisma.student.findMany({

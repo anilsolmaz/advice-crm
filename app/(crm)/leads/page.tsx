@@ -16,7 +16,7 @@ export default async function LeadsPage() {
     user.role === "ADMIN" || user.role === "ACCOUNTING"
       ? {}
       : canViewAll && allowed.length > 0
-      ? { program: { in: allowed } }
+      ? { OR: [{ advisorId: user.id }, { program: { in: allowed } }] }
       : canViewAll
       ? {}
       : { advisorId: user.id };
